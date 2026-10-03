@@ -79,6 +79,22 @@ class ProfileTab extends ConsumerWidget {
                   : '${stationery.where((s) => s.owned).length}/${stationery.length}',
               onTap: () => context.push('/stationery'),
             ),
+            const SizedBox(height: 10),
+            _MenuTile(
+              key: const ValueKey('menu-settings'),
+              icon: Icons.settings_rounded,
+              color: Palette.mint,
+              title: '설정 · 차단 목록',
+              onTap: () => context.push('/settings'),
+            ),
+            const SizedBox(height: 10),
+            _MenuTile(
+              key: const ValueKey('menu-notices'),
+              icon: Icons.campaign_rounded,
+              color: Palette.pink,
+              title: '공지사항',
+              onTap: () => context.push('/notices'),
+            ),
             const SizedBox(height: 24),
             Center(
               child: TextButton.icon(

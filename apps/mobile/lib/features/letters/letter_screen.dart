@@ -14,6 +14,9 @@ import '../goats/goats_api.dart';
 import '../goats/hand_availability.dart';
 import '../goats/schedule.dart';
 import '../map/goat_painter.dart';
+import '../safety/goat_eating.dart';
+import '../safety/report_sheet.dart';
+import '../safety/safety_api.dart';
 import 'compose_controller.dart';
 import 'letter_models.dart';
 import 'letter_paper.dart';
@@ -156,6 +159,26 @@ class _LetterScreenState extends ConsumerState<LetterScreen> {
               ? (current.recipient == null ? '보낸 랜덤 편지' : '${current.recipient!.nickname}님에게 보낸 편지')
               : '${current.sender.nickname}님의 편지',
         ),
+        actions: [
+          // 받은 편지: 신고·차단 (SPEC 9.1)
+          if (!current.isSender && !current.isEaten)
+            IconButton(
+              key: const ValueKey('letter-more'),
+              tooltip: '신고·차단',
+              icon: const Icon(Icons.more_vert_rounded),
+              onPressed: () => showSafetyMenu(
+                context,
+                target: ReportTarget.letter,
+                targetId: current.id,
+                userId: current.sender.id,
+                nickname: current.sender.nickname,
+                onBlocked: () {
+                  refreshMailboxesFromWidget(ref);
+                  if (context.mounted) context.pop();
+                },
+              ),
+            ),
+        ],
       ),
       body: SafeArea(
         child: Column(
@@ -165,7 +188,7 @@ class _LetterScreenState extends ConsumerState<LetterScreen> {
                 padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
                 children: [
                   if (current.isEaten)
-                    const EatenLetterCard()
+                    EatenLetterCard(letter: current)
                   else
                     AspectRatio(
                       aspectRatio: 0.82,
@@ -355,27 +378,33 @@ class _Journey extends ConsumerWidget {
     final now = ref.watch(clockTickProvider);
     String at(DateTime t, String? code) =>
         [formatClock(t), place(code)].where((s) => s.isNotEmpty).join(' · ');
-    final steps = [
-      ('맡김', at(letter.handedAt, letter.originRegionCode), true),
-      (
-        letter.express ? '특급 배달 중' : '배달 중',
-        letter.etaAt == null
-            ? ''
-            : delivered
-            ? '${iGa(letter.goatName ?? '염소')} 들고 갔어요'
-            : '${iGa(letter.goatName ?? '염소')} 가는 중 · 약 ${formatRemaining(letter.etaAt!.difference(now))} 뒤',
-        true,
-      ),
-      (
-        '도착',
-        delivered
-            ? at(letter.deliveredAt!, letter.destRegionCode)
-            : letter.etaAt == null
-            ? ''
-            : '${formatClock(letter.etaAt!)} 도착 예정${place(letter.destRegionCode).isEmpty ? '' : ' · ${place(letter.destRegionCode)}'}',
-        delivered,
-      ),
-    ];
+    final eatenOnWay = letter.isEaten && !delivered;
+    final steps = eatenOnWay
+        ? [
+            ('맡김', at(letter.handedAt, letter.originRegionCode), true),
+            ('${iGa(letter.goatName ?? '염소')} 먹어버렸어요', '배달하던 길에 · 부적절한 내용', true),
+          ]
+        : [
+            ('맡김', at(letter.handedAt, letter.originRegionCode), true),
+            (
+              letter.express ? '특급 배달 중' : '배달 중',
+              letter.etaAt == null
+                  ? ''
+                  : delivered
+                  ? '${iGa(letter.goatName ?? '염소')} 들고 갔어요'
+                  : '${iGa(letter.goatName ?? '염소')} 가는 중 · 약 ${formatRemaining(letter.etaAt!.difference(now))} 뒤',
+              true,
+            ),
+            (
+              '도착',
+              delivered
+                  ? at(letter.deliveredAt!, letter.destRegionCode)
+                  : letter.etaAt == null
+                  ? ''
+                  : '${formatClock(letter.etaAt!)} 도착 예정${place(letter.destRegionCode).isEmpty ? '' : ' · ${place(letter.destRegionCode)}'}',
+              delivered,
+            ),
+          ];
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -498,38 +527,53 @@ class _Actions extends StatelessWidget {
 }
 
 /// 염소가 먹어버린 편지 자리(SPEC 9.3). 먹는 연출은 M6.
+/// 염소가 먹어버린 편지 (SPEC 9.3): 먹는 연출 + 안내
 class EatenLetterCard extends StatelessWidget {
-  const EatenLetterCard({super.key});
+  const EatenLetterCard({super.key, required this.letter, this.frozenAt});
+
+  final Letter letter;
+
+  @visibleForTesting
+  final double? frozenAt;
 
   @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.all(24),
-    decoration: BoxDecoration(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(18),
-      border: Border.all(color: Palette.outline, width: 2.5),
-    ),
-    child: const Column(
-      children: [
-        StickerImage('goat-tear', size: 96),
-        SizedBox(height: 12),
-        Text(
-          '염소가 먹어버린 편지',
-          style: TextStyle(
-            fontFamily: Fonts.title,
-            fontFamilyFallback: Fonts.fallback,
-            fontSize: 20,
+  Widget build(BuildContext context) {
+    final goat = letter.goatName ?? '우체부 염소';
+    final wasDelivered = letter.deliveredAt != null;
+    return Container(
+      key: const ValueKey('eaten-letter'),
+      padding: const EdgeInsets.fromLTRB(16, 20, 16, 24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: Palette.outline, width: 2.5),
+      ),
+      child: Column(
+        children: [
+          GoatEatingScene(look: letter.goatLook ?? RollingLooks.city, frozenAt: frozenAt),
+          const SizedBox(height: 12),
+          Text(
+            letter.isSender && !wasDelivered ? '${iGa(goat)} 편지를 먹어버렸어요' : '염소가 먹어버린 편지',
+            style: const TextStyle(
+              fontFamily: Fonts.title,
+              fontFamilyFallback: Fonts.fallback,
+              fontSize: 20,
+            ),
           ),
-        ),
-        SizedBox(height: 6),
-        Text(
-          '부적절한 내용이 있어서 우체부 염소가 꿀꺽 먹어버렸어요.',
-          textAlign: TextAlign.center,
-          style: TextStyle(height: 1.5),
-        ),
-      ],
-    ),
-  );
+          const SizedBox(height: 6),
+          Text(
+            letter.isSender
+                ? (wasDelivered
+                      ? '부적절한 내용이 있어서 ${letter.recipient?.nickname ?? '받는 사람'}님 편지함에서 염소가 꿀꺽 먹어버렸어요.'
+                      : '부적절한 내용이 있어서 ${letter.recipient?.nickname ?? '받는 사람'}님에게 가는 길에 꿀꺽 먹어버렸어요. 편지는 전해지지 않아요.')
+                : '부적절한 내용이 있어서 우체부 염소가 꿀꺽 먹어버렸어요.',
+            textAlign: TextAlign.center,
+            style: const TextStyle(height: 1.5),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 /// 편지 도착 연출: 염소가 봉투를 물고 뒤뚱뒤뚱 와서 내려놓고, 봉투가 열린다. 탭하면 건너뛴다.

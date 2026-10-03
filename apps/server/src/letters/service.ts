@@ -314,6 +314,7 @@ export class LetterService {
             deliveredAt: { not: null },
             recipientTrashedAt: null,
             hiddenForRecipient: false,
+            sender: { blockedBy: { none: { blockerId: userId } } },
           }
         : box === 'sent'
           ? { senderId: userId, senderTrashedAt: null }

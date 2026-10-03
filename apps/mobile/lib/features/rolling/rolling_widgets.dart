@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 
 import '../../app/theme.dart';
 import '../letters/letter_paper.dart';
+import '../map/goat_painter.dart';
+import '../safety/goat_eating.dart';
 import 'rolling_models.dart';
 
 /// 두루마리 위·아래 나무 막대
@@ -84,10 +86,26 @@ int _hash(String s) {
 
 /// 두루마리에 붙은 한마디 쪽지. 기울기·색은 id로 정해져 매번 같다.
 class NoteCard extends StatelessWidget {
-  const NoteCard({super.key, required this.entry, this.width = 160});
+  const NoteCard({
+    super.key,
+    required this.entry,
+    this.width = 160,
+    this.onLongPress,
+    this.goatLook,
+    this.eatFrozenAt,
+  });
 
   final RollingEntry entry;
   final double width;
+
+  /// 남의 글: 길게 눌러 신고·차단
+  final VoidCallback? onLongPress;
+
+  /// 먹힌 글을 먹는 염소(두루마리 염소 색)
+  final GoatLook? goatLook;
+
+  @visibleForTesting
+  final double? eatFrozenAt;
 
   @override
   Widget build(BuildContext context) {
@@ -98,9 +116,21 @@ class NoteCard extends StatelessWidget {
         ? entry.author.nickname
         : '${entry.author.nickname} · ${entry.author.title}';
     final body = entry.eaten
-        ? Text(
-            '냠냠… 염소가 먹어 버린 한마디예요',
-            style: TextStyle(fontSize: 13, color: Palette.textBrown.withValues(alpha: 0.6)),
+        ? Column(
+            children: [
+              // 두루마리에서 글이 먹히는 연출(SPEC 9.3)
+              GoatEatingScene(
+                look: goatLook ?? RollingLooks.city,
+                height: 64,
+                frozenAt: eatFrozenAt,
+              ),
+              const SizedBox(height: 4),
+              Text(
+                '염소가 먹어 버린 한마디예요',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 12.5, color: Palette.textBrown.withValues(alpha: 0.7)),
+              ),
+            ],
           )
         : Text(
             entry.body ?? '',
@@ -115,72 +145,77 @@ class NoteCard extends StatelessWidget {
     return Semantics(
       label: entry.eaten ? '$author의 한마디, 염소가 먹었어요' : '$author: ${entry.body}',
       excludeSemantics: true,
-      child: Transform.rotate(
-        angle: angle,
-        child: Stack(
-          clipBehavior: Clip.none,
-          children: [
-            Container(
-              width: width,
-              padding: const EdgeInsets.fromLTRB(12, 14, 12, 10),
-              decoration: BoxDecoration(
-                color: color,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: entry.mine ? const Color(0xFFE0A100) : Palette.outline,
-                  width: entry.mine ? 2.5 : 1.5,
-                ),
-                boxShadow: const [BoxShadow(color: Color(0x225A4636), offset: Offset(0, 3))],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  body,
-                  const SizedBox(height: 8),
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: Text(
-                      '— $author',
-                      textAlign: TextAlign.right,
-                      style: const TextStyle(fontSize: 12, color: Palette.textBrown),
-                    ),
+      onLongPressHint: onLongPress == null ? null : '신고·차단',
+      onLongPress: onLongPress,
+      child: GestureDetector(
+        onLongPress: onLongPress,
+        child: Transform.rotate(
+          angle: angle,
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Container(
+                width: width,
+                padding: const EdgeInsets.fromLTRB(12, 14, 12, 10),
+                decoration: BoxDecoration(
+                  color: color,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: entry.mine ? const Color(0xFFE0A100) : Palette.outline,
+                    width: entry.mine ? 2.5 : 1.5,
                   ),
-                ],
-              ),
-            ),
-            for (final s in entry.stickers)
-              Positioned(
-                left: s.x * (width - 30) - 4,
-                top: s.y * 40 - 12,
-                child: IgnorePointer(child: StickerImage(s.id, size: 34)),
-              ),
-            if (entry.mine)
-              Positioned(
-                top: -9,
-                left: width / 2 - 26,
-                child: Transform.rotate(
-                  angle: -0.06,
-                  child: Container(
-                    width: 52,
-                    height: 18,
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      color: const Color(0xCCFFE08A),
-                      borderRadius: BorderRadius.circular(3),
+                  boxShadow: const [BoxShadow(color: Color(0x225A4636), offset: Offset(0, 3))],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    body,
+                    const SizedBox(height: 8),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: Text(
+                        '— $author',
+                        textAlign: TextAlign.right,
+                        style: const TextStyle(fontSize: 12, color: Palette.textBrown),
+                      ),
                     ),
-                    child: const Text(
-                      '내 글',
-                      style: TextStyle(
-                        fontFamily: Fonts.title,
-                        fontFamilyFallback: Fonts.fallback,
-                        fontSize: 11,
-                        color: Palette.textBrown,
+                  ],
+                ),
+              ),
+              for (final s in entry.stickers)
+                Positioned(
+                  left: s.x * (width - 30) - 4,
+                  top: s.y * 40 - 12,
+                  child: IgnorePointer(child: StickerImage(s.id, size: 34)),
+                ),
+              if (entry.mine)
+                Positioned(
+                  top: -9,
+                  left: width / 2 - 26,
+                  child: Transform.rotate(
+                    angle: -0.06,
+                    child: Container(
+                      width: 52,
+                      height: 18,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: const Color(0xCCFFE08A),
+                        borderRadius: BorderRadius.circular(3),
+                      ),
+                      child: const Text(
+                        '내 글',
+                        style: TextStyle(
+                          fontFamily: Fonts.title,
+                          fontFamilyFallback: Fonts.fallback,
+                          fontSize: 11,
+                          color: Palette.textBrown,
+                        ),
                       ),
                     ),
                   ),
                 ),
-              ),
-          ],
+            ],
+          ),
         ),
       ),
     );

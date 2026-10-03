@@ -51,6 +51,7 @@ docs/         DECISIONS.md, 개인정보처리방침/약관 초안, 스토어 �
 - 서버 테스트: `pnpm --filter @meeil/server test` (실제 PostgreSQL 필요. `<DB명>_test` DB를 자동으로 만들어 쓰므로 개발 데이터는 안전)
 - 전체 점검(lint·타입·테스트·포맷): `pnpm lint && pnpm typecheck && pnpm test && pnpm format:check`
 - 관리자 웹: `pnpm --filter @meeil/admin dev` (http://localhost:5173/admin/)
+- 관리자 계정 만들기: `ADMIN_PASSWORD=... pnpm --filter @meeil/server admin:create <아이디> [ADMIN|MODERATOR]` (TOTP URI 출력, 배포는 `docs/ADMIN.md`)
 - 지역 데이터 재생성: `pnpm --filter @meeil/tools-regions build:regions`
 - 스티커 SVG 재생성: `pnpm --filter @meeil/tools-stickers build:stickers`
 - 스케줄 시뮬레이터: `pnpm --filter @meeil/tools-schedule-sim sim [--days 30] [--start 2026-10-01]` (CI에서도 실행, 제약 위반 시 실패. 같은 검증이 서버 테스트 `src/schedule/schedule.sim.test.ts`에도 있다)

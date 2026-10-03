@@ -3,6 +3,7 @@ import type { FastifyBaseLogger } from 'fastify';
 import { PgBoss } from 'pg-boss';
 import type { Db } from './db.js';
 import type { LetterService } from './letters/service.js';
+import type { EatService } from './moderation/eat.js';
 import { notifyGoatArrivals, ORPHAN_PHOTO_MS } from './push/goat-arrival.js';
 import type { Pusher } from './push/push.js';
 import type { ScheduleService } from './schedule/service.js';
@@ -20,6 +21,7 @@ export async function startJobs(opts: {
   db: Db;
   schedule: ScheduleService;
   letters: LetterService;
+  eat: EatService;
   pusher: Pusher;
   storage: Storage;
   log: FastifyBaseLogger;
@@ -61,6 +63,7 @@ export async function startJobs(opts: {
   await boss.schedule(DAILY_CLEANUP, '0 4 * * *', null, { tz: 'Asia/Seoul' });
   await boss.work(DAILY_CLEANUP, async () => {
     const purged = await opts.letters.purgeExpiredTrash();
+    const evidence = await opts.eat.purgeEvidence();
     const orphans = await opts.db.letterPhoto.findMany({
       where: { letterId: null, createdAt: { lt: new Date(Date.now() - ORPHAN_PHOTO_MS) } },
       select: { id: true, storageKey: true },
@@ -69,7 +72,7 @@ export async function startJobs(opts: {
       await opts.storage.delete(p.storageKey).catch(() => undefined);
       await opts.db.letterPhoto.delete({ where: { id: p.id } });
     }
-    opts.log.info({ purged, orphanPhotos: orphans.length }, '매일 정리');
+    opts.log.info({ purged, evidence, orphanPhotos: orphans.length }, '매일 정리');
   });
 
   // 기동 직후에도 한 번 채운다(배포 사이에 03시를 놓쳤을 수 있음)

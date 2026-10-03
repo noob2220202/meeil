@@ -21,3 +21,4 @@ apps/mobile/android/key.properties
 *.jks
 *.keystore
 apps/server/.storage/
+apps/admin/build-shots/

@@ -5,7 +5,7 @@ import { authPlugin } from './auth/plugin.js';
 import { createSocialVerifier, type SocialVerifier } from './auth/social.js';
 import { TokenService } from './auth/tokens.js';
 import type { Db } from './db.js';
-import type { Env } from './env.js';
+import { adminSecretKey, type Env } from './env.js';
 import { AppError } from './errors.js';
 import { authRoutes } from './routes/auth.js';
 import { goatRoutes } from './routes/goats.js';
@@ -22,6 +22,11 @@ import { healthRoutes } from './routes/health.js';
 import { meRoutes } from './routes/me.js';
 import { regionRoutes } from './routes/regions.js';
 import { ScheduleService } from './schedule/service.js';
+import { AdminTokens, adminAuthPlugin } from './admin/auth.js';
+import { adminRoutes } from './admin/routes.js';
+import { EatService } from './moderation/eat.js';
+import { ReportService } from './moderation/reports.js';
+import { safetyRoutes } from './routes/safety.js';
 import { rewardRoutes } from './routes/rewards.js';
 import { AchievementService } from './rewards/achievements.js';
 import { AdRewardService, GoogleAdKeys, type AdKeySource } from './rewards/ads.js';
@@ -31,6 +36,7 @@ declare module 'fastify' {
   interface FastifyInstance {
     db: Db;
     letters: LetterService;
+    eat: EatService;
   }
 }
 
@@ -163,6 +169,22 @@ export async function buildApp({
     ads: new AdRewardService(db, adKeys, now, env.ADMOB_AD_UNIT_IDS),
     achievements,
     devAds: env.AUTH_DEV_LOGIN,
+  });
+  await app.register(safetyRoutes, {
+    reports: new ReportService(db, now),
+    rateLimit: rateLimitEnabled,
+  });
+
+  const eat = new EatService(db, storage, pusher, now);
+  app.decorate('eat', eat);
+  await app.register(adminAuthPlugin, { tokens: new AdminTokens(env.JWT_SECRET, now) });
+  await app.register(adminRoutes, {
+    eat,
+    storage,
+    pusher,
+    now,
+    secretKey: adminSecretKey(env),
+    rateLimit: rateLimitEnabled,
   });
   return app;
 }

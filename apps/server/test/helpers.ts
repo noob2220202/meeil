@@ -74,6 +74,10 @@ export async function createTestApp(
 export async function resetUsers(db: Db): Promise<void> {
   // 사용자를 참조하는 편지·신고·차단부터
   await db.report.deleteMany({});
+  await db.auditLog.deleteMany({});
+  await db.notice.deleteMany({});
+  await db.sanction.deleteMany({});
+  await db.rollingTopic.deleteMany({});
   await db.letter.updateMany({ data: { replyToId: null } });
   await db.letter.deleteMany({});
   await db.letterPhoto.deleteMany({});

@@ -17,6 +17,7 @@ const boss = env.JOBS_ENABLED
       db,
       schedule,
       letters: app.letters,
+      eat: app.eat,
       pusher,
       storage,
       log: app.log,

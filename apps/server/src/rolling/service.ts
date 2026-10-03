@@ -134,9 +134,16 @@ export class RollingService {
       orderBy: { createdAt: 'asc' },
     });
     const join = await this.joinStatus(userId, paper, entries);
+    // 내가 차단한 사람의 글은 보이지 않는다(SPEC 9.1)
+    const blocked = new Set(
+      (
+        await this.db.block.findMany({ where: { blockerId: userId }, select: { blockedId: true } })
+      ).map((b) => b.blockedId),
+    );
+    const visible = entries.filter((e) => !blocked.has(e.authorId));
     return {
       paper: await this.paperDto(paper),
-      entries: entries.map((e) => entryDto(e, userId)),
+      entries: visible.map((e) => entryDto(e, userId)),
       joined: entries.some((e) => e.authorId === userId),
       canJoin: join.block === null,
       joinBlock: join.block,
@@ -194,13 +201,24 @@ export class RollingService {
       level: p.level,
       scopeCode: p.scopeCode,
       scopeName,
-      topic: p.topic,
+      topic: p.topic ?? (await this.topicFor(p)),
       periodStart: p.periodStart.toISOString(),
       periodEnd: p.periodEnd.toISOString(),
       goat: goat
         ? { id: goat.id, name: goat.name, hatColor: goat.hatColor, bagColor: goat.bagColor }
         : null,
     };
+  }
+
+  /** 관리자가 정한 주제: 그 지역 주제 → 레벨 전체('*') 주제 */
+  private async topicFor(p: PaperRow): Promise<string | null> {
+    const rows = await this.db.rollingTopic.findMany({
+      where: { level: p.level, periodStart: p.periodStart, scopeCode: { in: [p.scopeCode, '*'] } },
+    });
+    return (
+      (rows.find((r) => r.scopeCode === p.scopeCode) ?? rows.find((r) => r.scopeCode === '*'))
+        ?.topic ?? null
+    );
   }
 
   /** 한마디 남기기. 사진 없음, 장당 1인 1회, 해당 레벨 염소가 내 시에 있을 때만 */

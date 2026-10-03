@@ -23,6 +23,8 @@ import '../features/profile/attendance_screen.dart';
 import '../features/profile/points_history_screen.dart';
 import '../features/profile/stationery_screen.dart';
 import '../features/rolling/rolling_album_screen.dart';
+import '../features/safety/notices_screen.dart';
+import '../features/safety/settings_screen.dart';
 import '../features/rolling/rolling_paper_screen.dart';
 import 'routes.dart';
 
@@ -62,6 +64,8 @@ final routerProvider = Provider<GoRouter>((ref) {
         ),
       ),
       GoRoute(path: '/compose', builder: (_, _) => const ComposeScreen()),
+      GoRoute(path: '/settings', builder: (_, _) => const SettingsScreen()),
+      GoRoute(path: '/notices', builder: (_, _) => const NoticesScreen()),
       GoRoute(path: '/attendance', builder: (_, _) => const AttendanceScreen()),
       GoRoute(path: '/points', builder: (_, _) => const PointsHistoryScreen()),
       GoRoute(path: '/achievements', builder: (_, _) => const AchievementsScreen()),

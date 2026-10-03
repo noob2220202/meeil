@@ -11,7 +11,9 @@ import 'config.dart';
 
 /// 알림 데이터 → 열 화면 경로
 String? routeForPush(Map<String, dynamic> data) => switch (data['type']) {
-  'letter' when data['letterId'] is String => '/letters/${data['letterId']}',
+  'letter' || 'letter-eaten' when data['letterId'] is String => '/letters/${data['letterId']}',
+  'rolling-eaten' when data['paperId'] is String => '/rolling/${data['paperId']}',
+  'notice' => '/notices',
   'goat' => '/',
   _ => null,
 };

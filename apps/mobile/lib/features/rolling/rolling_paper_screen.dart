@@ -9,6 +9,8 @@ import '../goats/hand_availability.dart';
 import '../letters/compose_screen.dart' show StickerTray;
 import '../letters/letter_models.dart';
 import '../letters/letter_paper.dart';
+import '../safety/report_sheet.dart';
+import '../safety/safety_api.dart';
 import 'rolling_api.dart';
 import 'rolling_models.dart';
 import 'rolling_texts.dart';
@@ -49,7 +51,7 @@ class RollingPaperScreen extends ConsumerWidget {
             Expanded(
               child: RefreshIndicator(
                 onRefresh: controller.refresh,
-                child: _Scroll(view: v, now: now),
+                child: _Scroll(view: v, now: now, onChanged: controller.refresh),
               ),
             ),
             _JoinBar(view: v, now: now, onJoin: () => _openJoin(context, v)),
@@ -71,10 +73,13 @@ class RollingPaperScreen extends ConsumerWidget {
 }
 
 class _Scroll extends StatelessWidget {
-  const _Scroll({required this.view, required this.now});
+  const _Scroll({required this.view, required this.now, required this.onChanged});
 
   final RollingView view;
   final DateTime now;
+
+  /// 차단 후 다시 불러오기
+  final VoidCallback onChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -134,7 +139,24 @@ class _Scroll extends StatelessWidget {
                       spacing: 14,
                       runSpacing: 22,
                       alignment: WrapAlignment.center,
-                      children: [for (final e in view.entries) NoteCard(entry: e, width: noteW)],
+                      children: [
+                        for (final e in view.entries)
+                          NoteCard(
+                            entry: e,
+                            width: noteW,
+                            goatLook: p.look,
+                            onLongPress: e.mine || e.eaten
+                                ? null
+                                : () => showSafetyMenu(
+                                    context,
+                                    target: ReportTarget.rollingEntry,
+                                    targetId: e.id,
+                                    userId: e.author.id,
+                                    nickname: e.author.nickname,
+                                    onBlocked: onChanged,
+                                  ),
+                          ),
+                      ],
                     ),
                 ],
               ),

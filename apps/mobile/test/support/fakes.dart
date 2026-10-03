@@ -21,6 +21,7 @@ import 'package:meeil/features/rewards/ad_gateway.dart';
 import 'package:meeil/features/rewards/rewards_api.dart';
 import 'package:meeil/features/rewards/rewards_models.dart';
 import 'package:meeil/features/rolling/rolling_api.dart';
+import 'package:meeil/features/safety/safety_api.dart';
 import 'package:meeil/features/rolling/rolling_models.dart';
 
 import 'dart:convert';
@@ -38,8 +39,12 @@ class _FakeUser {
   int points = 0;
   String? title;
   String? titleId;
+  bool randomReceive = true;
+  bool notifyEnabled = true;
 
   Me toMe() => Me(
+    randomReceive: randomReceive,
+    notifyEnabled: notifyEnabled,
     title: title,
     titleAchievementId: titleId,
     adsUnderAge: false,
@@ -200,6 +205,7 @@ Future<List<Override>> appOverrides({
   FakeRollingApi? rolling,
   FakeRewardsApi? rewards,
   FakeAdGateway? ads,
+  FakeSafetyApi? safety,
   bool scheduleFails = false,
 }) async {
   final prefs = await SharedPreferences.getInstance();
@@ -216,6 +222,7 @@ Future<List<Override>> appOverrides({
     rollingApiProvider.overrideWithValue(rolling ?? FakeRollingApi(store)),
     rewardsApiProvider.overrideWithValue(rewards ?? FakeRewardsApi(backend, store)),
     adGatewayProvider.overrideWithValue(ads ?? FakeAdGateway()),
+    safetyApiProvider.overrideWithValue(safety ?? FakeSafetyApi(store, backend: backend)),
     stationeryProvider.overrideWith(
       (ref) async => (rewards ?? FakeRewardsApi(backend, store)).stationery(),
     ),
@@ -388,11 +395,16 @@ Letter sampleReceived({
   String stationeryId = 'cream',
   LetterMode mode = LetterMode.direct,
   String body = '오늘 우리 동네에 메롱이가 왔어! 너한테도 염소가 놀러 가길 바라며 편지 보내.',
+  bool eaten = false,
 }) => Letter(
   id: id,
   mode: mode,
   isSender: false,
-  status: unread ? LetterStatus.delivered : LetterStatus.read,
+  status: eaten
+      ? LetterStatus.eaten
+      : unread
+      ? LetterStatus.delivered
+      : LetterStatus.read,
   sender: const Person(id: 'u-dubu', nickname: '두부염소', title: '단골 손님'),
   recipient: const Person(id: 'me', nickname: '나'),
   body: body,
@@ -692,3 +704,63 @@ List<Achievement> sampleAchievements() => [
     target: 5,
   ),
 ];
+
+/// 신고·차단·설정·공지 가짜 서버
+class FakeSafetyApi extends SafetyApi {
+  FakeSafetyApi(this.store, {this.backend})
+    : super(ApiClient(baseUrl: 'http://fake.invalid', tokenStore: store));
+
+  final MemoryTokenStore store;
+  FakeBackend? backend;
+
+  final reports = <(ReportTarget, String, String, String?)>[];
+  final blocked = <String, String>{};
+  final settings = <String, bool>{};
+  final notices_ = <Notice>[];
+  ApiException? reportError;
+
+  /// 차단할 때 닉네임을 알 수 있게(실제 서버는 DB에서 찾는다)
+  final names = <String, String>{'u-dubu': '두부염소', 'u-kong': '콩이네'};
+
+  @override
+  Future<void> report({
+    required ReportTarget target,
+    required String targetId,
+    required String reason,
+    String? detail,
+  }) async {
+    if (reportError != null) throw reportError!;
+    reports.add((
+      target,
+      targetId,
+      reason,
+      detail == null || detail.trim().isEmpty ? null : detail.trim(),
+    ));
+  }
+
+  @override
+  Future<void> block(String userId) async => blocked[userId] = names[userId] ?? userId;
+
+  @override
+  Future<void> unblock(String userId) async => blocked.remove(userId);
+
+  @override
+  Future<List<BlockedUser>> blocks() async => [
+    for (final e in blocked.entries) BlockedUser(e.key, e.value, fixtureNow),
+  ];
+
+  @override
+  Future<void> updateSettings({bool? randomReceive, bool? notifyEnabled}) async {
+    if (randomReceive != null) settings['randomReceive'] = randomReceive;
+    if (notifyEnabled != null) settings['notifyEnabled'] = notifyEnabled;
+    final t = store.tokens;
+    if (backend != null && t != null) {
+      final u = backend!._user(t.accessToken);
+      if (randomReceive != null) u.randomReceive = randomReceive;
+      if (notifyEnabled != null) u.notifyEnabled = notifyEnabled;
+    }
+  }
+
+  @override
+  Future<List<Notice>> notices() async => List.of(notices_);
+}

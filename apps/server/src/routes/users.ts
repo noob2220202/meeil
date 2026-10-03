@@ -17,6 +17,8 @@ export const userRoutes: FastifyPluginAsync = async (app) => {
       id: { not: req.userId },
       status: { in: ['ACTIVE' as const, 'SUSPENDED' as const] },
       nickname: { not: null },
+      blocking: { none: { blockedId: req.userId } },
+      blockedBy: { none: { blockerId: req.userId } },
     };
     const select = {
       id: true,

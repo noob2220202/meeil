@@ -358,6 +358,18 @@ model RollingPaper {
   @@map("rolling_papers")
 }
 
+/// 관리자가 정한 롤링페이퍼 주제. scopeCode '*'는 그 레벨의 모든 지역(SPEC 6, 9.4)
+model RollingTopic {
+  level       RollingLevel
+  periodStart DateTime
+  scopeCode   String
+  topic       String       @db.VarChar(60)
+  createdAt   DateTime     @default(now())
+
+  @@id([level, periodStart, scopeCode])
+  @@map("rolling_topics")
+}
+
 model RollingEntry {
   id        String             @id @default(uuid(7)) @db.Uuid
   paperId   String             @db.Uuid
@@ -510,6 +522,10 @@ model Report {
   resolvedBy   AdminUser?    @relation(fields: [resolvedById], references: [id])
 
   @@index([status, createdAt])
+  @@index([reporterId, createdAt])
+  @@index([letterId])
+  @@index([rollingEntryId])
+  @@index([targetUserId])
   @@map("reports")
 }
 
@@ -570,7 +586,7 @@ model AdminUser {
   id           String    @id @default(uuid(7)) @db.Uuid
   username     String    @unique
   passwordHash String
-  /// TOTP 시크릿(암호화 저장은 M6에서)
+  /// TOTP 시크릿. ADMIN_SECRET_KEY로 AES-256-GCM 암호화해 저장한다
   totpSecret   String?
   role         AdminRole @default(MODERATOR)
   disabled     Boolean   @default(false)

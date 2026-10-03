@@ -12,6 +12,8 @@ class Me {
     this.title,
     this.titleAchievementId,
     this.adsUnderAge = true,
+    this.randomReceive = true,
+    this.notifyEnabled = true,
   });
 
   factory Me.fromJson(Map<String, dynamic> j) {
@@ -28,6 +30,8 @@ class Me {
       nicknameChangeableAt: changeable == null ? null : DateTime.parse(changeable),
       title: j['title'] as String?,
       titleAchievementId: j['titleAchievementId'] as String?,
+      randomReceive: j['randomReceive'] as bool? ?? true,
+      notifyEnabled: j['notifyEnabled'] as bool? ?? true,
       adsUnderAge: (j['ads'] as Map<String, dynamic>?)?['underAge'] as bool? ?? true,
     );
   }
@@ -47,6 +51,12 @@ class Me {
 
   /// 광고 요청에 청소년 설정을 적용할지(생년월일은 서버만 안다)
   final bool adsUnderAge;
+
+  /// 랜덤 편지 받기 (SPEC 9.1)
+  final bool randomReceive;
+
+  /// 편지 도착·염소 알림
+  final bool notifyEnabled;
 
   bool get onboardingCompleted => termsAgreed && birthDateSet && nicknameSet;
 }

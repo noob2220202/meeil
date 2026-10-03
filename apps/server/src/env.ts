@@ -46,6 +46,11 @@ const EnvSchema = z
     FCM_CLIENT_EMAIL: z.string().default(''),
     /** PEM. 환경변수에서는 줄바꿈을 \\n으로 넣어도 된다 */
     FCM_PRIVATE_KEY: z.string().default(''),
+    /** 관리자 TOTP 시크릿 암호화 키(32자 이상). production에서는 꼭 따로 둔다 */
+    ADMIN_SECRET_KEY: z.preprocess(
+      (v) => (v === '' ? undefined : v),
+      z.string().min(32).optional(),
+    ),
     /** 보상형 광고 단위 ID(SSV 콜백의 ad_unit 검사). 비어 있으면 검사하지 않는다 */
     ADMOB_AD_UNIT_IDS: csv,
     /** 배치 작업(pg-boss). 테스트에서는 끈다 */
@@ -60,6 +65,10 @@ const EnvSchema = z
       Boolean(e.R2_ACCOUNT_ID && e.R2_ACCESS_KEY_ID && e.R2_SECRET_ACCESS_KEY && e.R2_BUCKET),
     { message: 'STORAGE_DRIVER=r2에는 R2_* 값이 모두 필요합니다', path: ['STORAGE_DRIVER'] },
   )
+  .refine((e) => !(e.NODE_ENV === 'production' && !e.ADMIN_SECRET_KEY), {
+    message: 'production에는 ADMIN_SECRET_KEY가 필요합니다',
+    path: ['ADMIN_SECRET_KEY'],
+  })
   .refine((e) => !(e.NODE_ENV === 'production' && e.AUTH_DEV_LOGIN), {
     message: 'production에서는 AUTH_DEV_LOGIN을 켤 수 없습니다',
     path: ['AUTH_DEV_LOGIN'],
@@ -74,3 +83,7 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
   }
   return parsed.data;
 }
+
+/** TOTP 시크릿 암호화 키(개발에서는 JWT_SECRET에서 파생) */
+export const adminSecretKey = (env: Env): string =>
+  env.ADMIN_SECRET_KEY ?? `totp:${env.JWT_SECRET}`;
