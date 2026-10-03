@@ -365,13 +365,13 @@ class _ModeChip extends StatelessWidget {
         duration: const Duration(milliseconds: 150),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         constraints: const BoxConstraints(minHeight: 48),
-        alignment: Alignment.center,
         decoration: BoxDecoration(
           color: selected ? Palette.yellow : Colors.white,
           borderRadius: BorderRadius.circular(14),
           border: Border.all(color: Palette.outline, width: 2),
         ),
-        child: Text(label, style: const TextStyle(fontSize: 14)),
+        // 글자 폭만큼(가로로 늘어나지 않게), 세로 가운데
+        child: Center(widthFactor: 1, child: Text(label, style: const TextStyle(fontSize: 14))),
       ),
     ),
   );

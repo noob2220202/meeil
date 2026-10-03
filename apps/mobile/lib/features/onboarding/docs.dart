@@ -1,4 +1,4 @@
-// 약관 요약본. 정식 개인정보처리방침·이용약관 초안은 M8에서 docs/에 작성하고 이 내용을 교체한다.
+// 앱 안의 요약본. 전문은 docs/legal/*.md를 서버가 /legal/privacy, /legal/terms로 보여 준다.
 
 class LegalDoc {
   const LegalDoc(this.title, this.body);

@@ -58,8 +58,9 @@ docs/         DECISIONS.md, 개인정보처리방침/약관 초안, 스토어 �
 - 스케줄 시뮬레이터: `pnpm --filter @meeil/tools-schedule-sim sim [--days 30] [--start 2026-10-01]` (CI에서도 실행, 제약 위반 시 실패. 같은 검증이 서버 테스트 `src/schedule/schedule.sim.test.ts`에도 있다)
 - 앱 스케줄 픽스처 갱신: `pnpm --filter @meeil/tools-schedule-sim fixture ../../apps/mobile/test/fixtures/schedule_20261003_1200kst.json`
 - 앱 실행(Galaxy): `cd apps/mobile && flutter run --dart-define=API_BASE_URL=http://<PC LAN IP>:3000` (USB 디버깅 연결. 소셜 키는 `docs/SOCIAL_LOGIN.md`, 푸시·R2는 `docs/PUSH_AND_STORAGE.md`)
-- 앱 테스트: `cd apps/mobile && flutter analyze && flutter test --exclude-tags screenshot`
+- 앱 테스트: `cd apps/mobile && flutter analyze && flutter test --exclude-tags "screenshot || store-assets"`
 - 앱 스크린샷(Galaxy 해상도): `cd apps/mobile && flutter test --tags screenshot` → `build/screenshots/`
 - 디버그 APK: `cd apps/mobile && flutter build apk --debug`
 - 실기기 프레임 확인: `cd apps/mobile && flutter drive --profile --driver=test_driver/perf_driver.dart --target=integration_test/map_perf_test.dart [--dart-define=GOATS=60]` → `build/map_frames.timeline_summary.json` (기준은 `docs/PERFORMANCE.md`)
-- 릴리스 AAB 빌드: (M8에서 서명 설정 후 추가)
+- 릴리스 AAB 빌드: `cd apps/mobile && flutter build appbundle --release --dart-define=...` (업로드 키 `android/key.properties` 필요, 없으면 멈춤. 절차·dart-define 목록은 `docs/RELEASE.md`)
+- 앱 아이콘·스플래시·스토어 그래픽 재생성: `cd apps/mobile && flutter test --tags screenshot && flutter test --tags store-assets` → `android/app/src/main/res`, `docs/store/`

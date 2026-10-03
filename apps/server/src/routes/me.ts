@@ -12,6 +12,7 @@ import {
   normalizeNickname,
 } from '../domain/nickname.js';
 import { POINTS, applyLedger } from '../domain/points.js';
+import type { AccountService } from '../account/delete.js';
 import { AppError, parse } from '../errors.js';
 import { METRICS, type AchievementService } from '../rewards/achievements.js';
 import { Prisma } from '../generated/prisma/client.js';
@@ -59,7 +60,8 @@ async function completeOnboardingIfReady(db: Db, userId: string, at: Date): Prom
 export const meRoutes: FastifyPluginAsync<{
   now: () => Date;
   achievements: AchievementService;
-}> = async (app, { now, achievements }) => {
+  account: AccountService;
+}> = async (app, { now, achievements, account }) => {
   app.addHook('preHandler', app.authenticate);
 
   const me = async (userId: string) =>
@@ -201,5 +203,11 @@ export const meRoutes: FastifyPluginAsync<{
     ]);
     if (visit.count > 0) await achievements.evaluateSafe(req.userId, METRICS.visit, req.log);
     return { accepted: true, reason: null, regionCode };
+  });
+
+  /** 탈퇴(SPEC 8): 즉시 지우고 토큰도 무효. 같은 소셜 계정으로 다시 오면 새 계정이 된다. */
+  app.delete('/me', async (req, reply) => {
+    await account.deleteAccount(req.userId);
+    return reply.status(204).send();
   });
 };

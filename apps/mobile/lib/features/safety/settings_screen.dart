@@ -36,6 +36,23 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     }
   }
 
+  Future<void> _confirmDelete(String nickname) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (_) => _DeleteDialog(nickname: nickname),
+    );
+    if (ok != true || !mounted) return;
+    setState(() => _saving = true);
+    try {
+      await ref.read(sessionProvider.notifier).deleteAccount();
+    } on ApiException catch (e) {
+      if (mounted) {
+        setState(() => _saving = false);
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final session = ref.watch(sessionProvider);
@@ -161,6 +178,15 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               ),
             ],
           ),
+          const SizedBox(height: 28),
+          Center(
+            child: TextButton(
+              key: const ValueKey('delete-account'),
+              style: TextButton.styleFrom(foregroundColor: const Color(0xFFB3261E)),
+              onPressed: me == null ? null : () => _confirmDelete(me.nickname ?? ''),
+              child: const Text('탈퇴하기'),
+            ),
+          ),
         ],
       ),
     );
@@ -199,4 +225,63 @@ class _Group extends StatelessWidget {
     clipBehavior: Clip.antiAlias,
     child: Column(children: children),
   );
+}
+
+/// 탈퇴 확인: 지워지는 것을 알리고 닉네임을 한 번 더 적게 한다
+class _DeleteDialog extends StatefulWidget {
+  const _DeleteDialog({required this.nickname});
+  final String nickname;
+
+  @override
+  State<_DeleteDialog> createState() => _DeleteDialogState();
+}
+
+class _DeleteDialogState extends State<_DeleteDialog> {
+  final _c = TextEditingController();
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final match = _c.text.trim() == widget.nickname;
+    return AlertDialog(
+      title: const Text('정말 탈퇴할까요?'),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              '바로 지워지고 되돌릴 수 없어요.\n'
+              '· 내가 보낸 편지·사진·두루마리 글\n'
+              '· 받은 편지, 포인트, 출석, 업적, 편지지\n'
+              '· 닉네임과 생년월일\n\n'
+              '신고된 편지는 확인을 위해 30일 보관한 뒤 지워요.',
+              style: TextStyle(height: 1.5),
+            ),
+            const SizedBox(height: 12),
+            Text('확인을 위해 닉네임 "${widget.nickname}"을(를) 적어 주세요.'),
+            TextField(
+              key: const ValueKey('delete-confirm-nickname'),
+              controller: _c,
+              onChanged: (_) => setState(() {}),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('그만두기')),
+        TextButton(
+          key: const ValueKey('delete-confirm'),
+          style: TextButton.styleFrom(foregroundColor: const Color(0xFFB3261E)),
+          onPressed: match ? () => Navigator.pop(context, true) : null,
+          child: const Text('탈퇴'),
+        ),
+      ],
+    );
+  }
 }

@@ -18,7 +18,9 @@ RUN pnpm --filter @meeil/server run db:generate \
 FROM node:22-alpine
 WORKDIR /app
 ENV NODE_ENV=production
+ENV LEGAL_DIR=/app/legal
 COPY --from=build /out /app
+COPY docs/legal /app/legal
 EXPOSE 3000
 # 기동 시 마이그레이션을 적용한다.
 CMD ["sh", "-c", "node node_modules/prisma/build/index.js migrate deploy && node dist/server.js"]

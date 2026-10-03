@@ -39,6 +39,9 @@ class AuthApi {
     );
   }
 
+  /// 탈퇴(SPEC 8). 서버가 바로 지운다.
+  Future<void> deleteAccount() => client.delete('/me');
+
   Future<void> logout(String refreshToken) async {
     try {
       await client.post('/auth/logout', {'refreshToken': refreshToken}, auth: false);

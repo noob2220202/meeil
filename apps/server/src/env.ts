@@ -51,6 +51,8 @@ const EnvSchema = z
       (v) => (v === '' ? undefined : v),
       z.string().min(32).optional(),
     ),
+    /** 약관 마크다운 폴더(docs/legal). 컨테이너에서는 /app/legal */
+    LEGAL_DIR: z.string().default('../../docs/legal'),
     /** 보상형 광고 단위 ID(SSV 콜백의 ad_unit 검사). 비어 있으면 검사하지 않는다 */
     ADMOB_AD_UNIT_IDS: csv,
     /** 배치 작업(pg-boss). 테스트에서는 끈다 */

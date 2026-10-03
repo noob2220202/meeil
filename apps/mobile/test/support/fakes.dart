@@ -64,6 +64,7 @@ class FakeBackend {
   final _byProvider = <String, _FakeUser>{};
   final _byId = <String, _FakeUser>{};
   bool forceUnderAge = false;
+  final deleted = <String>[];
   bool offline = false;
   final takenNicknames = <String>{'메롱이'};
   int _seq = 0;
@@ -119,6 +120,14 @@ class FakeAuthApi extends AuthApi {
 
   @override
   Future<void> logout(String refreshToken) async {}
+
+  @override
+  Future<void> deleteAccount() async {
+    final u = await _current();
+    backend._byId.remove(u.id);
+    backend._byProvider.removeWhere((_, v) => v.id == u.id);
+    backend.deleted.add(u.id);
+  }
 
   @override
   Future<Me> me() async => (await _current()).toMe();

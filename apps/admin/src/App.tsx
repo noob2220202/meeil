@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { createApi, type AdminMe, type Api } from './api';
 import { Audit } from './pages/Audit';
 import { Dashboard } from './pages/Dashboard';
+import { Deletions } from './pages/Deletions';
 import { Login } from './pages/Login';
 import { Notices } from './pages/Notices';
 import { Photos } from './pages/Photos';
@@ -29,6 +30,7 @@ const NAV = [
   ['#/users', '사용자'],
   ['#/rolling', '롤링페이퍼'],
   ['#/notices', '공지·푸시'],
+  ['#/deletions', '탈퇴 요청'],
   ['#/audit', '감사 로그'],
 ] as const;
 
@@ -108,6 +110,8 @@ function Route({ path, api, me }: { path: string; api: Api; me: AdminMe }) {
       return <Rolling api={api} me={me} />;
     case '/notices':
       return <Notices api={api} me={me} />;
+    case '/deletions':
+      return <Deletions api={api} me={me} />;
     case '/audit':
       return me.role === 'ADMIN' ? <Audit api={api} /> : <p>최고 관리자만 볼 수 있어요.</p>;
     default:

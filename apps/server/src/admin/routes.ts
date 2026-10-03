@@ -11,6 +11,8 @@ import type { Pusher } from '../push/push.js';
 import { periodOf } from '../rolling/service.js';
 import type { Storage } from '../storage/storage.js';
 import { unseal, verifyPassword, verifyTotp } from './crypto.js';
+import type { AccountService } from '../account/delete.js';
+import { nicknameKey } from '../domain/nickname.js';
 
 const DAY = 24 * 60 * 60 * 1000;
 
@@ -23,6 +25,7 @@ export interface AdminDeps {
   secretKey: string;
   /** 요청 제한(테스트에서 끈다) */
   rateLimit: boolean;
+  account: AccountService;
 }
 
 const Login = z.object({
@@ -634,6 +637,73 @@ export const adminRoutes: FastifyPluginAsync<AdminDeps> = async (app, deps) => {
       });
       await audit(db, req, 'ROLLING_OFFICIAL_ENTRY', 'ROLLING_ENTRY', e.id);
       return reply.status(201).send({ id: e.id, paperId: paper.id });
+    });
+
+    // ───────── 웹 탈퇴 요청 ─────────
+
+    r.get('/admin/deletion-requests', async () => {
+      const rows = await db.deletionRequest.findMany({
+        orderBy: [{ processedAt: { sort: 'desc', nulls: 'first' } }, { createdAt: 'asc' }],
+        take: 100,
+      });
+      return {
+        requests: await Promise.all(
+          rows.map(async (x) => {
+            const u = x.processedAt
+              ? null
+              : await db.user.findFirst({
+                  where: { nicknameKey: nicknameKey(x.nickname) },
+                  select: { id: true, nickname: true, createdAt: true, lastActiveAt: true },
+                });
+            return {
+              id: x.id,
+              nickname: x.nickname,
+              hasContact: x.contact !== null,
+              contact: x.contact,
+              message: x.message,
+              createdAt: x.createdAt.toISOString(),
+              processedAt: x.processedAt?.toISOString() ?? null,
+              result: x.result,
+              match: u
+                ? {
+                    id: u.id,
+                    nickname: u.nickname,
+                    createdAt: u.createdAt.toISOString(),
+                    lastActiveAt: u.lastActiveAt.toISOString(),
+                  }
+                : null,
+            };
+          }),
+        ),
+      };
+    });
+
+    /** 요청 처리: DELETE면 그 닉네임 계정을 탈퇴 처리. 어느 쪽이든 연락처는 지운다. */
+    r.post('/admin/deletion-requests/:id/process', async (req) => {
+      requireAdmin(req);
+      const { id } = parse(Id, req.params);
+      const { action } = parse(z.object({ action: z.enum(['DELETE', 'REJECT']) }), req.body);
+      const x = await db.deletionRequest.findUnique({ where: { id } });
+      if (!x) throw new AppError(404, 'REQUEST_NOT_FOUND', '요청을 찾을 수 없어요.');
+      if (x.processedAt) throw new AppError(409, 'ALREADY_PROCESSED', '이미 처리한 요청이에요.');
+      let result = 'REJECTED';
+      if (action === 'DELETE') {
+        const u = await db.user.findFirst({
+          where: { nicknameKey: nicknameKey(x.nickname), isOfficial: false },
+        });
+        if (u) {
+          await deps.account.deleteAccount(u.id);
+          result = 'DELETED';
+        } else {
+          result = 'NOT_FOUND';
+        }
+      }
+      await db.deletionRequest.update({
+        where: { id },
+        data: { processedAt: now(), processedById: req.adminId, result, contact: null },
+      });
+      await audit(db, req, 'DELETION_REQUEST', 'DELETION_REQUEST', id, { result });
+      return { id, result };
     });
 
     // ───────── 감사 로그 ─────────

@@ -602,6 +602,23 @@ model AdminUser {
   @@map("admin_users")
 }
 
+/// 웹 페이지로 받은 계정 삭제 요청(앱을 쓸 수 없는 사용자용, SPEC 8·14). 처리 후 연락처는 지운다.
+model DeletionRequest {
+  id            String    @id @default(uuid(7)) @db.Uuid
+  nickname      String    @db.VarChar(40)
+  /// 결과를 알려 줄 연락처(이메일). 처리하면 지운다.
+  contact       String?   @db.VarChar(120)
+  message       String?   @db.VarChar(500)
+  createdAt     DateTime  @default(now())
+  processedAt   DateTime?
+  /// DELETED(삭제함) / NOT_FOUND(그런 닉네임 없음) / REJECTED(본인 확인 실패 등)
+  result        String?
+  processedById String?   @db.Uuid
+
+  @@index([processedAt, createdAt])
+  @@map("deletion_requests")
+}
+
 model AuditLog {
   id         String   @id @default(uuid(7)) @db.Uuid
   adminId    String   @db.Uuid

@@ -27,6 +27,8 @@ import { adminRoutes } from './admin/routes.js';
 import { EatService } from './moderation/eat.js';
 import { ReportService } from './moderation/reports.js';
 import { safetyRoutes } from './routes/safety.js';
+import { webRoutes } from './routes/web.js';
+import { AccountService } from './account/delete.js';
 import { clientErrorRoutes } from './routes/client-errors.js';
 import { rewardRoutes } from './routes/rewards.js';
 import { AchievementService } from './rewards/achievements.js';
@@ -38,6 +40,7 @@ declare module 'fastify' {
     db: Db;
     letters: LetterService;
     eat: EatService;
+    account: AccountService;
   }
 }
 
@@ -157,7 +160,10 @@ export async function buildApp({
     rateLimit: rateLimitEnabled,
   });
   const achievements = new AchievementService(db, now);
-  await app.register(meRoutes, { now, achievements });
+  const account = new AccountService(db, storage, now);
+  app.decorate('account', account);
+  await app.register(meRoutes, { now, achievements, account });
+  await app.register(webRoutes, { legalDir: env.LEGAL_DIR, rateLimit: rateLimitEnabled });
   await app.register(goatRoutes, { schedule, now });
   const letters = new LetterService(db, storage, pusher, now, achievements);
   app.decorate('letters', letters);
@@ -186,6 +192,7 @@ export async function buildApp({
     pusher,
     now,
     secretKey: adminSecretKey(env),
+    account,
     rateLimit: rateLimitEnabled,
   });
   return app;

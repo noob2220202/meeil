@@ -1,4 +1,5 @@
 // 롤링페이퍼 (SPEC 6, 4.2)
+import { DELETED_NAME } from '../account/delete.js';
 import type { Db } from '../db.js';
 import { kstToday } from '../domain/age.js';
 import { AppError } from '../errors.js';
@@ -282,7 +283,7 @@ function entryDto(e: EntryRow, viewerId: string) {
     id: e.id,
     author: {
       id: e.author.id,
-      nickname: e.author.nickname,
+      nickname: e.author.nickname ?? DELETED_NAME,
       title: e.author.titleAchievement?.titleText ?? null,
     },
     body: eaten ? null : e.body,

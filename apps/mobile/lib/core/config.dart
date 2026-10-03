@@ -8,6 +8,9 @@ abstract final class AppConfig {
     defaultValue: 'http://10.0.2.2:3000',
   );
 
+  /// 약관·계정 삭제 웹 페이지 주소(기본은 API 서버와 같다)
+  static const webBaseUrl = String.fromEnvironment('WEB_BASE_URL', defaultValue: apiBaseUrl);
+
   static const kakaoNativeAppKey = String.fromEnvironment('KAKAO_NATIVE_APP_KEY');
 
   /// 구글 OAuth 웹 클라이언트 ID(서버가 ID 토큰 audience로 검증)

@@ -1,5 +1,6 @@
 // 편지 맡기기·배달·보관함 (SPEC 3, 5)
 import type { Db } from '../db.js';
+import { DELETED_NAME } from '../account/delete.js';
 import { iGa } from '../domain/korean.js';
 import { applyLedger } from '../domain/points.js';
 import { AppError } from '../errors.js';
@@ -477,13 +478,13 @@ export class LetterService {
       status: l.status,
       sender: {
         id: l.sender.id,
-        nickname: l.sender.nickname,
+        nickname: l.sender.nickname ?? DELETED_NAME,
         title: l.sender.titleAchievement?.titleText ?? null,
       },
       recipient:
         isSender && l.mode === 'RANDOM' && !delivered
           ? null
-          : { id: l.recipient.id, nickname: l.recipient.nickname },
+          : { id: l.recipient.id, nickname: l.recipient.nickname ?? DELETED_NAME },
       body: eaten ? null : l.body,
       stationeryId: l.stationeryId,
       stickers: eaten ? [] : (l.stickers as unknown as PlacedSticker[]),

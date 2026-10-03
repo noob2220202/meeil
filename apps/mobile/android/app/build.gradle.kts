@@ -1,4 +1,13 @@
+import java.io.FileInputStream
 import java.util.Base64
+import java.util.Properties
+
+// 릴리스(업로드) 서명 키. android/key.properties(커밋 금지)에서 읽는다. 만드는 법은 docs/RELEASE.md
+val keystoreProperties = Properties().apply {
+    val f = rootProject.file("key.properties")
+    if (f.exists()) FileInputStream(f).use { load(it) }
+}
+val hasReleaseKey = keystoreProperties.getProperty("storeFile") != null
 
 // `flutter build/run --dart-define=KEY=VALUE` 값을 네이티브 설정에서도 쓰기 위해 해석한다.
 val dartDefines: Map<String, String> =
@@ -51,11 +60,21 @@ android {
             dartDefines["ADMOB_APP_ID"] ?: "ca-app-pub-3940256099942544~3347511713"
     }
 
+    signingConfigs {
+        if (hasReleaseKey) {
+            create("release") {
+                storeFile = file(keystoreProperties.getProperty("storeFile"))
+                storePassword = keystoreProperties.getProperty("storePassword")
+                keyAlias = keystoreProperties.getProperty("keyAlias")
+                keyPassword = keystoreProperties.getProperty("keyPassword")
+            }
+        }
+    }
+
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            // 디버그 키로 서명한 릴리스가 실수로 나가지 않게, 업로드 키가 없으면 아래에서 빌드를 멈춘다
+            signingConfig = if (hasReleaseKey) signingConfigs.getByName("release") else null
         }
     }
 }
@@ -72,4 +91,14 @@ flutter {
 
 dependencies {
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")
+}
+
+// 릴리스 빌드인데 업로드 키가 없으면 친절하게 멈춘다
+gradle.taskGraph.whenReady {
+    val wantsRelease = allTasks.any { it.name.contains("Release") && it.project == project }
+    if (wantsRelease && !hasReleaseKey) {
+        throw GradleException(
+            "android/key.properties가 없어 릴리스 서명을 할 수 없어요. docs/RELEASE.md의 '업로드 키 만들기'를 따라 주세요."
+        )
+    }
 }

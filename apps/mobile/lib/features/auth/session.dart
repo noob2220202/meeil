@@ -127,6 +127,17 @@ class SessionController extends Notifier<SessionState> {
     state = const SignedOut();
   }
 
+  /// 탈퇴: 서버에서 지운 뒤 기기의 토큰·소셜 연결도 지운다. 실패하면 ApiException.
+  Future<void> deleteAccount() async {
+    try {
+      await beforeSignOut?.call();
+    } catch (_) {}
+    await _api.deleteAccount();
+    await _store.clear();
+    await ref.read(socialLoginProvider).signOutAll();
+    state = const SignedOut(notice: '탈퇴했어요. 그동안 편지를 나눠 줘서 고마워요. 🐐');
+  }
+
   /// refresh까지 실패(다른 기기 탈취 감지·만료 등)
   void expired() {
     if (state is SignedIn) state = const SignedOut(notice: '로그인이 만료되었어요. 다시 로그인해 주세요.');
