@@ -7,7 +7,14 @@ import 'package:meeil/features/auth/auth_api.dart';
 import 'package:meeil/features/auth/me.dart';
 import 'package:meeil/features/auth/session.dart';
 import 'package:meeil/features/auth/social_login.dart';
+import 'package:meeil/features/goats/goats_api.dart';
+import 'package:meeil/features/goats/schedule.dart';
+import 'package:meeil/features/location/my_region.dart';
 import 'package:meeil/features/onboarding/permissions_screen.dart';
+
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:shared_preferences/shared_preferences.dart';
 
 class _FakeUser {
@@ -158,6 +165,9 @@ Future<List<Override>> appOverrides({
   required MemoryTokenStore store,
   FakeSocialLogin? social,
   FakePermissions? permissions,
+  LocationSource? location,
+  RegionApi? regionApi,
+  bool scheduleFails = false,
 }) async {
   final prefs = await SharedPreferences.getInstance();
   return [
@@ -166,8 +176,74 @@ Future<List<Override>> appOverrides({
     authApiProvider.overrideWithValue(FakeAuthApi(backend, store)),
     socialLoginProvider.overrideWithValue(social ?? FakeSocialLogin()),
     permissionGatewayProvider.overrideWithValue(permissions ?? FakePermissions()),
-    regionDataProvider.overrideWith(
-      (ref) async => RegionData(version: 'test', provinces: const [], regions: const []),
+    // compute()·실제 파일 로딩은 가짜 시간에서 끝나지 않으므로 미리 파싱한 값을 쓴다
+    regionDataProvider.overrideWith((ref) async => testRegionData),
+    goatsApiProvider.overrideWithValue(FakeGoatsApi(store, fail: scheduleFails)),
+    regionApiProvider.overrideWithValue(regionApi ?? FakeRegionApi(store)),
+    locationSourceProvider.overrideWithValue(
+      location ?? FakeLocationSource(grant: LocationAccess.denied),
     ),
   ];
 }
+
+/// 실제 서버 생성기로 만든 2026-10-03 12:00 KST 스케줄(tools/schedule-sim fixture)
+const scheduleFixturePath = 'test/fixtures/schedule_20261003_1200kst.json';
+final fixtureNow = DateTime.utc(2026, 10, 3, 3);
+
+GoatSchedule loadScheduleFixture() {
+  final j = jsonDecode(File(scheduleFixturePath).readAsStringSync()) as Map<String, dynamic>;
+  // 기기 시계 = 서버 시계로 맞춘다(오프셋 0)
+  final t = DateTime.parse(j['serverTime'] as String);
+  return GoatSchedule.fromJson(j, requestStarted: t, responseReceived: t);
+}
+
+class FakeGoatsApi extends GoatsApi {
+  FakeGoatsApi(MemoryTokenStore store, {this.fail = false})
+    : super(ApiClient(baseUrl: 'http://fake.invalid', tokenStore: store));
+
+  final bool fail;
+
+  @override
+  Future<GoatSchedule> fetchSchedule({int hours = 48}) async {
+    if (fail) throw ApiException.network;
+    return loadScheduleFixture();
+  }
+}
+
+/// 서버 판정을 흉내 낸다: 가짜 위치는 거부
+class FakeRegionApi extends RegionApi {
+  FakeRegionApi(MemoryTokenStore store)
+    : super(ApiClient(baseUrl: 'http://fake.invalid', tokenStore: store));
+
+  final reports = <String>[];
+
+  @override
+  Future<RegionReport> report(String regionCode, {required bool mocked}) async {
+    reports.add(regionCode);
+    return mocked
+        ? const RegionReport(accepted: false)
+        : RegionReport(accepted: true, regionCode: regionCode);
+  }
+}
+
+class FakeLocationSource implements LocationSource {
+  FakeLocationSource({this.fix, this.grant = LocationAccess.granted});
+
+  LocationFix? fix;
+  LocationAccess grant;
+
+  @override
+  Future<LocationAccess> access() async => grant;
+
+  @override
+  Future<LocationAccess> requestAccess() async => grant;
+
+  @override
+  Future<LocationFix?> currentFix() async => fix;
+
+  @override
+  Future<void> openSettings() async {}
+}
+
+/// 번들 지역 데이터(테스트에서 한 번만 파싱)
+final testRegionData = RegionData.parse(File(regionAssetPath).readAsStringSync());

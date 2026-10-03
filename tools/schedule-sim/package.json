@@ -5,7 +5,8 @@
   "scripts": {
     "sim": "tsx src/cli.ts",
     "typecheck": "tsc --noEmit",
-    "lint": "eslint src"
+    "lint": "eslint src",
+    "fixture": "tsx src/fixture.ts"
   },
   "devDependencies": {
     "@types/node": "26.6.4",

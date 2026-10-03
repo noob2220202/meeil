@@ -90,13 +90,17 @@ void main() {
     expect(permissions.locationRequests, 1);
     expect(permissions.notificationRequests, 1);
 
-    // 홈
+    // 홈 = 지도 탭(위치 권한 없음 → 위치 켜기 안내)
+    expect(find.text('우리 동네 염소를 기다려 볼까요?'), findsOneWidget);
+    await tapText(tester, '내 정보');
     expect(find.text('뽀얀염소님, 어서 와요!'), findsOneWidget);
     expect(find.text('5P'), findsOneWidget);
     expect(store.tokens, isNotNull);
 
     // 재실행: 같은 저장소 → 바로 홈
     await launch(tester, await appOverrides(backend: backend, store: store));
+    expect(find.text('우리 동네 염소를 기다려 볼까요?'), findsOneWidget);
+    await tapText(tester, '내 정보');
     expect(find.text('뽀얀염소님, 어서 와요!'), findsOneWidget);
 
     // 로그아웃 → 로그인 화면(소개는 다시 안 봄)
@@ -104,9 +108,9 @@ void main() {
     expect(find.text('카카오로 시작하기'), findsOneWidget);
     expect(store.tokens, isNull);
 
-    // 같은 카카오 계정으로 다시 로그인하면 가입 단계 없이 홈
+    // 같은 카카오 계정으로 다시 로그인하면 가입 단계 없이 홈(지도)
     await tapText(tester, '카카오로 시작하기');
-    expect(find.text('뽀얀염소님, 어서 와요!'), findsOneWidget);
+    expect(find.text('우리 동네 염소를 기다려 볼까요?'), findsOneWidget);
   });
 
   testWidgets('만 14세 미만이면 안내 화면으로 가고 토큰을 지운다', (tester) async {

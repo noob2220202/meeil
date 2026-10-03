@@ -36,6 +36,8 @@ jobs:
       # 서버 통합 테스트(실제 PostgreSQL), 지역 도구·관리자 웹 단위 테스트.
       # M2부터 염소 스케줄 30일 시뮬레이터 테스트가 여기에 포함된다.
       - run: pnpm test
+      # 염소 스케줄 시뮬레이터(30일): 제약 위반 시 실패 — 깨지면 다음 단계로 가지 않는다
+      - run: pnpm --filter @meeil/tools-schedule-sim sim --days 30 --start 2026-10-01
       - run: pnpm --filter @meeil/admin build
 
   mobile:

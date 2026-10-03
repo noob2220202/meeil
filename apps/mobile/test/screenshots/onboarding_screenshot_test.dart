@@ -8,7 +8,6 @@ import 'package:meeil/app/app.dart';
 import 'package:meeil/app/theme.dart';
 import 'package:meeil/core/token_store.dart';
 import 'package:meeil/features/auth/auth_api.dart';
-import 'package:meeil/features/home/home_screen.dart';
 import 'package:meeil/features/onboarding/birth_screen.dart';
 import 'package:meeil/features/onboarding/intro_screen.dart';
 import 'package:meeil/features/onboarding/login_screen.dart';
@@ -94,6 +93,5 @@ void main() {
     );
     await captureScreen(tester, await wrap(const PermissionsScreen()), 'm1_09_permissions');
     await captureScreen(tester, await wrap(const UnderAgeScreen()), 'm1_10_under_age');
-    await captureScreen(tester, await wrap(const HomeScreen()), 'm1_11_home');
   });
 }

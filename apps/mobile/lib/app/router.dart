@@ -4,7 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../core/app_flags.dart';
 import '../features/auth/session.dart';
-import '../features/home/home_screen.dart';
+import '../features/home/main_shell.dart';
 import '../features/onboarding/birth_screen.dart';
 import '../features/onboarding/doc_screen.dart';
 import '../features/onboarding/intro_screen.dart';
@@ -44,7 +44,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/docs/:id',
         builder: (_, state) => DocScreen(docId: state.pathParameters['id']!),
       ),
-      GoRoute(path: Routes.home, builder: (_, _) => const HomeScreen()),
+      GoRoute(path: Routes.home, builder: (_, _) => const MainShell()),
     ],
   );
 });

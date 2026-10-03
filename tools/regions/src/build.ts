@@ -171,7 +171,57 @@ async function main() {
     version: REGION_VERSION,
     source: `vuski/admdongkor@${SOURCE_COMMIT.slice(0, 7)} ${SOURCE_VERSION} (통계청 SGIS, 공공누리 1유형 / CC BY 4.0)`,
   };
-  const mobile = { ...meta, provinces: provinceList, regions };
+  // 일러스트 지도용: 시도 경계(굵은 흰 선)와 나라 전체 윤곽(해안선·그림자)
+  const provinceGeo = JSON.parse(
+    (
+      await run(
+        '-i in.json -dissolve sido copy-fields=sidonm -o out.json format=geojson precision=0.0001',
+        { 'in.json': geo },
+      )
+    )['out.json'] ?? '{}',
+  ) as { features: Feature[] };
+  const provinceLabels = JSON.parse(
+    (
+      await run('-i in.json -points inner -o out.json format=geojson precision=0.0001', {
+        'in.json': provinceGeo,
+      })
+    )['out.json'] ?? '{}',
+  ) as { features: Feature[] };
+  const countryGeo = JSON.parse(
+    (
+      await run(
+        // 속성이 없으면 GeometryCollection으로 나오므로 상수 필드를 하나 붙여 Feature로 받는다
+        '-i in.json -each "kr=1" -dissolve kr -o out.json format=geojson precision=0.0001',
+        { 'in.json': geo },
+      )
+    )['out.json'] ?? '{}',
+  ) as { features: Feature[] };
+  const toPolys = (g: Feature['geometry']) =>
+    (g.type === 'Polygon'
+      ? [g.coordinates as number[][][]]
+      : (g.coordinates as number[][][][])
+    ).map((poly) => poly.map(roundRing));
+  const dokdoRounded = dokdoPolys.map((poly) => poly.map(roundRing));
+  const labelBySido = new Map(
+    provinceLabels.features.map((f) => [
+      String(f.properties.sido),
+      f.geometry.coordinates as number[],
+    ]),
+  );
+  const provinceShapes = provinceGeo.features
+    .map((f) => {
+      const code = String(f.properties.sido);
+      const label = labelBySido.get(code) ?? [0, 0];
+      return {
+        code,
+        label: [label[0], label[1]],
+        polygons: [...toPolys(f.geometry), ...(code === ULLEUNG.slice(0, 2) ? dokdoRounded : [])],
+      };
+    })
+    .sort((a, b) => a.code.localeCompare(b.code));
+  const country = [...countryGeo.features.flatMap((f) => toPolys(f.geometry)), ...dokdoRounded];
+
+  const mobile = { ...meta, provinces: provinceList, regions, provinceShapes, country };
   const seed = {
     ...meta,
     provinces: provinceList,
