@@ -44,6 +44,10 @@
                 <data android:scheme="${kakaoScheme}" android:host="oauth"/>
             </intent-filter>
         </activity>
+        <!-- AdMob 앱 ID. 기본값은 구글 테스트 앱 ID(build.gradle.kts의 ADMOB_APP_ID) -->
+        <meta-data
+            android:name="com.google.android.gms.ads.APPLICATION_ID"
+            android:value="${admobAppId}"/>
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
         <meta-data

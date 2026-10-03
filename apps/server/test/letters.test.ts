@@ -138,7 +138,7 @@ describe('두 계정 편지 왕복', () => {
     const eta = Date.parse(sent.etaAt!);
     expect(eta).toBeGreaterThanOrEqual(T0.getTime() + 3600_000);
     expect(eta).toBeLessThanOrEqual(T0.getTime() + 72 * 3600_000);
-    expect(await points(a.id)).toBe(4); // 가입 5P - 1P
+    expect(await points(a.id)).toBe(6); // 가입 5P - 1P + 첫 편지 업적 2P
 
     // 도착 전: B 받은 편지함은 비어 있고, A 보낸 편지함엔 이동 중
     expect((await b.get('/letters/inbox')).json<{ letters: unknown[] }>().letters).toHaveLength(0);
@@ -231,7 +231,7 @@ describe('맡기기 규칙', () => {
     const r2 = await a.post('/letters', body);
     expect(r2.json<LetterDto>().id).toBe(r1.json<LetterDto>().id);
     expect(await db.letter.count()).toBe(1);
-    expect(await points(a.id)).toBe(4);
+    expect(await points(a.id)).toBe(6); // 5 - 1 + 첫 편지 업적 2
   });
 
   it('하루 20통까지(KST 하루)', async () => {

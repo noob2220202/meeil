@@ -46,6 +46,9 @@ android {
         // 카카오 키가 없으면 쓰이지 않는 더미 스킴(로그인 버튼이 "준비 중"을 안내)
         manifestPlaceholders["kakaoScheme"] =
             "kakao" + (dartDefines["KAKAO_NATIVE_APP_KEY"] ?: "disabled")
+        // 개발 중에는 구글 테스트 앱 ID만 쓴다. 출시 빌드에서 --dart-define=ADMOB_APP_ID=... 로 바꾼다
+        manifestPlaceholders["admobAppId"] =
+            dartDefines["ADMOB_APP_ID"] ?: "ca-app-pub-3940256099942544~3347511713"
     }
 
     buildTypes {

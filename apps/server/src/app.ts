@@ -22,6 +22,10 @@ import { healthRoutes } from './routes/health.js';
 import { meRoutes } from './routes/me.js';
 import { regionRoutes } from './routes/regions.js';
 import { ScheduleService } from './schedule/service.js';
+import { rewardRoutes } from './routes/rewards.js';
+import { AchievementService } from './rewards/achievements.js';
+import { AdRewardService, GoogleAdKeys, type AdKeySource } from './rewards/ads.js';
+import { AttendanceService } from './rewards/attendance.js';
 
 declare module 'fastify' {
   interface FastifyInstance {
@@ -72,6 +76,8 @@ export interface AppOptions {
   moderate?: PhotoModerator;
   /** 요청 제한. 테스트에서만 끈다 */
   rateLimit?: boolean;
+  /** AdMob SSV 공개키(테스트에서 바꿔 끼운다) */
+  adKeys?: AdKeySource;
 }
 
 export async function buildApp({
@@ -85,6 +91,7 @@ export async function buildApp({
   storage = createStorage(env, now),
   pusher = createPusher(env, db),
   moderate = noopModerator,
+  adKeys = new GoogleAdKeys(),
 }: AppOptions): Promise<FastifyInstance> {
   const app = Fastify({
     logger: logger ? { level: env.NODE_ENV === 'production' ? 'info' : 'debug' } : false,
@@ -141,14 +148,21 @@ export async function buildApp({
     devLogin: env.AUTH_DEV_LOGIN,
     rateLimit: rateLimitEnabled,
   });
-  await app.register(meRoutes, { now });
+  const achievements = new AchievementService(db, now);
+  await app.register(meRoutes, { now, achievements });
   await app.register(goatRoutes, { schedule, now });
-  const letters = new LetterService(db, storage, pusher, now);
+  const letters = new LetterService(db, storage, pusher, now, achievements);
   app.decorate('letters', letters);
   await app.register(letterRoutes, { letters });
   await app.register(photoRoutes, { storage, moderate });
   if (storage instanceof LocalStorage) await app.register(mediaRoutes, { storage });
   await app.register(userRoutes);
-  await app.register(rollingRoutes, { rolling: new RollingService(db, now) });
+  await app.register(rollingRoutes, { rolling: new RollingService(db, now, achievements) });
+  await app.register(rewardRoutes, {
+    attendance: new AttendanceService(db, now),
+    ads: new AdRewardService(db, adKeys, now, env.ADMOB_AD_UNIT_IDS),
+    achievements,
+    devAds: env.AUTH_DEV_LOGIN,
+  });
   return app;
 }

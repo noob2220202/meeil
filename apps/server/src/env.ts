@@ -46,6 +46,8 @@ const EnvSchema = z
     FCM_CLIENT_EMAIL: z.string().default(''),
     /** PEM. 환경변수에서는 줄바꿈을 \\n으로 넣어도 된다 */
     FCM_PRIVATE_KEY: z.string().default(''),
+    /** 보상형 광고 단위 ID(SSV 콜백의 ad_unit 검사). 비어 있으면 검사하지 않는다 */
+    ADMOB_AD_UNIT_IDS: csv,
     /** 배치 작업(pg-boss). 테스트에서는 끈다 */
     JOBS_ENABLED: z
       .enum(['true', 'false', '1', '0', ''])

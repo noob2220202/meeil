@@ -9,6 +9,7 @@ import type { SocialVerifier } from '../src/auth/social.js';
 import { createDb, type Db } from '../src/db.js';
 import { loadEnv } from '../src/env.js';
 import { testDatabaseUrl } from './global-setup.js';
+import type { AdKeySource } from '../src/rewards/ads.js';
 
 /** 테스트용 소셜 검증기: 'kakao-ok:<id>', 'google-ok:<id>' 형태만 통과 */
 export const fakeSocial: SocialVerifier = {
@@ -34,7 +35,13 @@ export function testClock(start = new Date('2026-10-03T03:00:00Z')) {
 
 /** 실제 PostgreSQL(DATABASE_URL)에 붙는 통합 테스트용 앱 */
 export async function createTestApp(
-  opts: { now?: () => Date; devLogin?: boolean; rateLimit?: boolean } = {},
+  opts: {
+    now?: () => Date;
+    devLogin?: boolean;
+    rateLimit?: boolean;
+    adKeys?: AdKeySource;
+    adUnits?: string;
+  } = {},
 ): Promise<{ app: FastifyInstance; db: Db; pusher: MemoryPusher }> {
   const env = loadEnv({
     ...process.env,
@@ -46,6 +53,7 @@ export async function createTestApp(
     JOBS_ENABLED: 'false',
     JWT_SECRET: process.env.JWT_SECRET ?? 'test-secret-0123456789abcdef0123456789',
     AUTH_DEV_LOGIN: opts.devLogin === false ? 'false' : 'true',
+    ADMOB_AD_UNIT_IDS: opts.adUnits ?? '',
   });
   const db = createDb(env.DATABASE_URL);
   const pusher = new MemoryPusher();
@@ -57,6 +65,7 @@ export async function createTestApp(
     social: fakeSocial,
     now: opts.now,
     rateLimit: opts.rateLimit ?? false,
+    ...(opts.adKeys ? { adKeys: opts.adKeys } : {}),
   });
   return { app, db, pusher };
 }

@@ -4,6 +4,7 @@ import { kstToday } from '../domain/age.js';
 import { AppError } from '../errors.js';
 import type { Prisma, RollingLevel } from '../generated/prisma/client.js';
 import { REGION_FRESH_MS, type PlacedSticker } from '../letters/rules.js';
+import { METRICS, type AchievementService } from '../rewards/achievements.js';
 import { NATION_PERIOD_MS, PROVINCE_PERIOD_MS, SCHEDULE_EPOCH } from '../schedule/timeline.js';
 
 const DAY = 24 * 60 * 60 * 1000;
@@ -44,6 +45,7 @@ export class RollingService {
   constructor(
     private readonly db: Db,
     private readonly now: () => Date,
+    private readonly achievements?: AchievementService,
   ) {}
 
   /** 지금 보고된(30분 이내) 내 시. 없으면 null */
@@ -229,6 +231,7 @@ export class RollingService {
         },
         include: entryInclude,
       });
+      await this.achievements?.evaluateSafe(userId, METRICS.rolling);
       return entryDto(e, userId);
     } catch (err) {
       // 동시에 두 번 눌렀을 때

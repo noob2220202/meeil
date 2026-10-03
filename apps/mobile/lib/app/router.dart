@@ -18,6 +18,10 @@ import '../features/onboarding/permissions_screen.dart';
 import '../features/onboarding/splash_screen.dart';
 import '../features/onboarding/terms_screen.dart';
 import '../features/onboarding/under_age_screen.dart';
+import '../features/profile/achievements_screen.dart';
+import '../features/profile/attendance_screen.dart';
+import '../features/profile/points_history_screen.dart';
+import '../features/profile/stationery_screen.dart';
 import '../features/rolling/rolling_album_screen.dart';
 import '../features/rolling/rolling_paper_screen.dart';
 import 'routes.dart';
@@ -58,6 +62,10 @@ final routerProvider = Provider<GoRouter>((ref) {
         ),
       ),
       GoRoute(path: '/compose', builder: (_, _) => const ComposeScreen()),
+      GoRoute(path: '/attendance', builder: (_, _) => const AttendanceScreen()),
+      GoRoute(path: '/points', builder: (_, _) => const PointsHistoryScreen()),
+      GoRoute(path: '/achievements', builder: (_, _) => const AchievementsScreen()),
+      GoRoute(path: '/stationery', builder: (_, _) => const StationeryScreen()),
       GoRoute(path: '/rolling/album', builder: (_, _) => const RollingAlbumScreen()),
       GoRoute(
         path: '/rolling/:id',

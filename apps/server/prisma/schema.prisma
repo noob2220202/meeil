@@ -438,6 +438,8 @@ model UserAchievement {
   userId        String   @db.Uuid
   achievementId String
   achievedAt    DateTime @default(now())
+  /// 앱이 달성 축하를 보여 준 시각(안 봤으면 null)
+  seenAt        DateTime?
 
   user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   achievement Achievement @relation(fields: [achievementId], references: [id])

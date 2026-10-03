@@ -13,6 +13,7 @@ import {
 } from '../domain/nickname.js';
 import { POINTS, applyLedger } from '../domain/points.js';
 import { AppError, parse } from '../errors.js';
+import { METRICS, type AchievementService } from '../rewards/achievements.js';
 import { Prisma } from '../generated/prisma/client.js';
 
 const Body = {
@@ -33,7 +34,7 @@ const Body = {
 };
 
 /** 약관·생년월일·닉네임이 모두 채워지는 순간 가입 보너스와 기본 편지지를 한 번만 지급한다. */
-async function completeOnboardingIfReady(db: Db, userId: string): Promise<void> {
+async function completeOnboardingIfReady(db: Db, userId: string, at: Date): Promise<void> {
   await db.$transaction(async (tx) => {
     const u = await tx.user.findUniqueOrThrow({ where: { id: userId } });
     if (!u.termsAgreedAt || !u.privacyAgreedAt || !u.birthDate || !u.nickname) return;
@@ -42,6 +43,7 @@ async function completeOnboardingIfReady(db: Db, userId: string): Promise<void> 
       delta: POINTS.SIGNUP_BONUS,
       reason: 'SIGNUP_BONUS',
       idempotencyKey: `signup:${userId}`,
+      at,
     });
     const defaults = await tx.stationery.findMany({
       where: { isDefault: true },
@@ -54,11 +56,20 @@ async function completeOnboardingIfReady(db: Db, userId: string): Promise<void> 
   });
 }
 
-export const meRoutes: FastifyPluginAsync<{ now: () => Date }> = async (app, { now }) => {
+export const meRoutes: FastifyPluginAsync<{
+  now: () => Date;
+  achievements: AchievementService;
+}> = async (app, { now, achievements }) => {
   app.addHook('preHandler', app.authenticate);
 
   const me = async (userId: string) =>
-    toMeDto(await app.db.user.findUniqueOrThrow({ where: { id: userId } }));
+    toMeDto(
+      await app.db.user.findUniqueOrThrow({
+        where: { id: userId },
+        include: { titleAchievement: { select: { titleText: true } } },
+      }),
+      now(),
+    );
 
   app.get('/me', async (req) => {
     await app.db.user.update({ where: { id: req.userId }, data: { lastActiveAt: now() } });
@@ -72,7 +83,7 @@ export const meRoutes: FastifyPluginAsync<{ now: () => Date }> = async (app, { n
       where: { id: req.userId },
       data: { termsAgreedAt: at, privacyAgreedAt: at },
     });
-    await completeOnboardingIfReady(app.db, req.userId);
+    await completeOnboardingIfReady(app.db, req.userId, now());
     return me(req.userId);
   });
 
@@ -95,7 +106,7 @@ export const meRoutes: FastifyPluginAsync<{ now: () => Date }> = async (app, { n
       where: { id: req.userId },
       data: { birthDate: new Date(`${birthDate}T00:00:00.000Z`) },
     });
-    await completeOnboardingIfReady(app.db, req.userId);
+    await completeOnboardingIfReady(app.db, req.userId, now());
     return me(req.userId);
   });
 
@@ -135,7 +146,7 @@ export const meRoutes: FastifyPluginAsync<{ now: () => Date }> = async (app, { n
       }
       throw e;
     }
-    await completeOnboardingIfReady(app.db, req.userId);
+    await completeOnboardingIfReady(app.db, req.userId, now());
     return me(req.userId);
   });
 
@@ -173,7 +184,7 @@ export const meRoutes: FastifyPluginAsync<{ now: () => Date }> = async (app, { n
     if (reject) {
       return { accepted: false, reason: reject, regionCode: user.lastRegionCode };
     }
-    await app.db.$transaction([
+    const [, visit] = await app.db.$transaction([
       app.db.user.update({
         where: { id: req.userId },
         data: {
@@ -182,12 +193,13 @@ export const meRoutes: FastifyPluginAsync<{ now: () => Date }> = async (app, { n
           homeRegionCode: user.homeRegionCode ?? regionCode,
         },
       }),
-      app.db.regionVisit.upsert({
-        where: { userId_regionCode: { userId: req.userId, regionCode } },
-        create: { userId: req.userId, regionCode },
-        update: {},
+      // 방문은 지역 코드 집합만 남긴다(시각·좌표 없음, SPEC 7.3)
+      app.db.regionVisit.createMany({
+        data: [{ userId: req.userId, regionCode }],
+        skipDuplicates: true,
       }),
     ]);
+    if (visit.count > 0) await achievements.evaluateSafe(req.userId, METRICS.visit, req.log);
     return { accepted: true, reason: null, regionCode };
   });
 };

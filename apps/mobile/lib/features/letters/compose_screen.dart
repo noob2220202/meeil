@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -15,6 +17,7 @@ import '../goats/goat_avatar.dart';
 import '../goats/hand_availability.dart';
 import '../goats/schedule.dart';
 import '../location/my_region.dart';
+import '../rewards/rewards_controller.dart';
 import 'compose_controller.dart';
 import 'handoff_overlay.dart';
 import 'letter_models.dart';
@@ -99,14 +102,10 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
     if (path != null) _c.setPhoto(path);
   }
 
-  /// 맡긴 뒤 포인트 표시 갱신(실패해도 조용히)
+  /// 맡긴 뒤 포인트 표시 갱신과 업적 확인(실패해도 조용히)
   Future<void> _refreshPoints() async {
-    try {
-      final me = await ref.read(authApiProvider).me();
-      ref.read(sessionProvider.notifier).update(me);
-    } on ApiException {
-      // 다음에 내 정보를 볼 때 맞춰진다
-    }
+    await ref.read(sessionProvider.notifier).refreshMe();
+    unawaited(ref.read(unseenAchievementsProvider.notifier).poll());
   }
 
   Future<void> _hand(CanHand at) async {

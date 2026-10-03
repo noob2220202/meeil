@@ -6,6 +6,7 @@ import { AppError } from '../errors.js';
 import type { LetterMode, Prisma, RandomScope } from '../generated/prisma/client.js';
 import type { Pusher } from '../push/push.js';
 import { HARD_CAP_MS, MIN_TRANSIT_MS } from '../schedule/eta.js';
+import { METRICS, type AchievementService } from '../rewards/achievements.js';
 import type { Storage } from '../storage/storage.js';
 import { deliveryGoatsStayingAt } from './presence.js';
 import {
@@ -51,6 +52,7 @@ export class LetterService {
     private readonly storage: Storage,
     private readonly pusher: Pusher,
     private readonly now: () => Date,
+    private readonly achievements?: AchievementService,
   ) {}
 
   // ───────── 맡기기 ─────────
@@ -152,6 +154,7 @@ export class LetterService {
         reason: 'LETTER_SEND',
         idempotencyKey: `letter:${letter.id}`,
         refId: letter.id,
+        at: now,
       });
       if (input.photoId) {
         const { count } = await tx.letterPhoto.updateMany({
@@ -162,6 +165,7 @@ export class LetterService {
       }
       return tx.letter.findUniqueOrThrow({ where: { id: letter.id }, include: letterInclude });
     });
+    await this.achievements?.evaluateSafe(senderId, METRICS.letterSent);
     return this.dto(created, senderId);
   }
 
@@ -269,6 +273,7 @@ export class LetterService {
       take: 500,
     });
     let delivered = 0;
+    const recipients = new Set<string>();
     for (const l of due) {
       // 동시에 도는 작업이 있어도 한 번만 배달되게
       const { count } = await this.db.letter.updateMany({
@@ -277,6 +282,7 @@ export class LetterService {
       });
       if (count === 0) continue;
       delivered++;
+      if (!l.hiddenForRecipient) recipients.add(l.recipientId);
       if (l.hiddenForRecipient) continue;
       const recipient = await this.db.user.findUnique({
         where: { id: l.recipientId },
@@ -291,6 +297,7 @@ export class LetterService {
         })
         .catch(() => 0);
     }
+    for (const r of recipients) await this.achievements?.evaluateSafe(r, METRICS.letterReceived);
     return delivered;
   }
 

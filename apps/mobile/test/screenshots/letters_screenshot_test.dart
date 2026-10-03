@@ -12,7 +12,6 @@ import 'package:meeil/app/theme.dart';
 import 'package:meeil/core/token_store.dart';
 import 'package:meeil/features/goats/hand_availability.dart';
 import 'package:meeil/features/goats/schedule.dart';
-import 'package:meeil/features/letters/compose_controller.dart';
 import 'package:meeil/features/letters/compose_screen.dart';
 import 'package:meeil/features/letters/letter_models.dart';
 import 'package:meeil/features/letters/letter_screen.dart';
@@ -46,9 +45,11 @@ Future<Widget> app({
   final r = testRegionData.byCode[region]!;
   final store = MemoryTokenStore()
     ..tokens = const Tokens(accessToken: 'access:u1', refreshToken: 'r');
+  final backend = FakeBackend();
   final overrides = await appOverrides(
-    backend: FakeBackend(),
+    backend: backend,
     store: store,
+    rewards: FakeRewardsApi(backend, store)..owned.add('lined'),
     letters: letters,
     location: FakeLocationSource(fix: LocationFix(r.centerLon, r.centerLat)),
   );
@@ -74,17 +75,7 @@ Future<Widget> app({
     ],
   );
   return ProviderScope(
-    overrides: [
-      ...overrides,
-      clockTickProvider.overrideWith(() => FixedClock(fixtureNow)),
-      stationeryProvider.overrideWith(
-        (ref) async => const [
-          StationeryItem('cream', '크림', '', owned: true),
-          StationeryItem('lined', '줄노트', '출석 7일을 채우면 열려요', owned: true),
-          StationeryItem('sky-cloud', '하늘 구름', '10개 시를 방문하면 열려요', owned: false),
-        ],
-      ),
-    ],
+    overrides: [...overrides, clockTickProvider.overrideWith(() => FixedClock(fixtureNow))],
     child: MaterialApp.router(
       theme: buildTheme(),
       debugShowCheckedModeBanner: false,

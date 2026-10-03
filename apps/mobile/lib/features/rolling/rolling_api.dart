@@ -1,8 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/api_client.dart';
 import '../auth/session.dart';
 import '../letters/letter_models.dart';
+import '../rewards/rewards_controller.dart';
 import 'rolling_models.dart';
 
 class RollingApi {
@@ -62,6 +65,7 @@ class RollingPaperController extends AsyncNotifier<RollingView> {
     final cur = state.value;
     if (cur != null) state = AsyncData(cur.withEntry(e));
     ref.invalidate(rollingSummaryProvider);
+    unawaited(ref.read(unseenAchievementsProvider.notifier).poll());
   }
 }
 

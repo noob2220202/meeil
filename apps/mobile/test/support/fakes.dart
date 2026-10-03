@@ -16,6 +16,10 @@ import 'package:meeil/features/letters/letters_api.dart';
 import 'package:meeil/features/goats/schedule.dart';
 import 'package:meeil/features/location/my_region.dart';
 import 'package:meeil/features/onboarding/permissions_screen.dart';
+import 'package:meeil/features/letters/compose_controller.dart';
+import 'package:meeil/features/rewards/ad_gateway.dart';
+import 'package:meeil/features/rewards/rewards_api.dart';
+import 'package:meeil/features/rewards/rewards_models.dart';
 import 'package:meeil/features/rolling/rolling_api.dart';
 import 'package:meeil/features/rolling/rolling_models.dart';
 
@@ -32,8 +36,13 @@ class _FakeUser {
   bool birth = false;
   String? nickname;
   int points = 0;
+  String? title;
+  String? titleId;
 
   Me toMe() => Me(
+    title: title,
+    titleAchievementId: titleId,
+    adsUnderAge: false,
     id: id,
     nickname: nickname,
     status: 'ACTIVE',
@@ -59,6 +68,19 @@ class FakeBackend {
     if (u == null) throw const ApiException('UNAUTHORIZED', '다시 로그인해 주세요.', statusCode: 401);
     return u;
   }
+
+  /// 가입을 마친 사용자를 바로 만든다(로그인된 앱으로 시작할 때)
+  Tokens signedUp(String nickname, {int points = 5}) {
+    final u = _FakeUser('u${++_seq}')
+      ..terms = true
+      ..birth = true
+      ..nickname = nickname
+      ..points = points;
+    _byId[u.id] = u;
+    return Tokens(accessToken: 'access:${u.id}', refreshToken: 'refresh:${u.id}');
+  }
+
+  int pointsOf(Tokens t) => _user(t.accessToken).points;
 
   void _complete(_FakeUser u) {
     if (u.terms && u.birth && u.nickname != null && u.points == 0) u.points = 5;
@@ -176,6 +198,8 @@ Future<List<Override>> appOverrides({
   RegionApi? regionApi,
   FakeLettersApi? letters,
   FakeRollingApi? rolling,
+  FakeRewardsApi? rewards,
+  FakeAdGateway? ads,
   bool scheduleFails = false,
 }) async {
   final prefs = await SharedPreferences.getInstance();
@@ -190,6 +214,11 @@ Future<List<Override>> appOverrides({
     goatsApiProvider.overrideWithValue(FakeGoatsApi(store, fail: scheduleFails)),
     lettersApiProvider.overrideWithValue(letters ?? FakeLettersApi(store)),
     rollingApiProvider.overrideWithValue(rolling ?? FakeRollingApi(store)),
+    rewardsApiProvider.overrideWithValue(rewards ?? FakeRewardsApi(backend, store)),
+    adGatewayProvider.overrideWithValue(ads ?? FakeAdGateway()),
+    stationeryProvider.overrideWith(
+      (ref) async => (rewards ?? FakeRewardsApi(backend, store)).stationery(),
+    ),
     regionApiProvider.overrideWithValue(regionApi ?? FakeRegionApi(store)),
     locationSourceProvider.overrideWithValue(
       location ?? FakeLocationSource(grant: LocationAccess.denied),
@@ -499,3 +528,167 @@ RollingEntry sampleEntry(
   mine: mine,
   createdAt: fixtureNow.subtract(const Duration(hours: 2)),
 );
+
+/// 보상 가짜 서버: 출석·광고·업적. 포인트는 FakeBackend의 사용자에게 더한다.
+class FakeRewardsApi extends RewardsApi {
+  FakeRewardsApi(this.backend, this.store, {this.today = '2026-10-03'})
+    : super(ApiClient(baseUrl: 'http://fake.invalid', tokenStore: store));
+
+  final FakeBackend backend;
+  final MemoryTokenStore store;
+  String today;
+  final days = <String>{};
+  int streak = 0;
+  int adToday = 0;
+  final ledger = <LedgerEntry>[];
+  final pending = <Achievement>[];
+  final seen = <String>[];
+  List<Achievement> book = sampleAchievements();
+  final owned = <String>{'cream'};
+  bool fail = false;
+
+  Future<_FakeUser> _me() async => backend._user((await store.read())?.accessToken ?? '');
+
+  Future<void> _give(int delta, String reason, String label) async {
+    final u = await _me();
+    u.points += delta;
+    ledger.insert(
+      0,
+      LedgerEntry(
+        id: 'l${ledger.length}',
+        delta: delta,
+        balanceAfter: u.points,
+        reason: reason,
+        label: label,
+        createdAt: fixtureNow,
+      ),
+    );
+  }
+
+  AttendanceStatus _status({bool justChecked = false, int earned = 0}) => AttendanceStatus(
+    today: today,
+    month: today.substring(0, 7),
+    checkedToday: days.contains(today),
+    streak: streak,
+    daysToStreakBonus: 7 - streak % 7,
+    totalDays: days.length,
+    days: Set.of(days),
+    justChecked: justChecked,
+    earned: earned,
+  );
+
+  @override
+  Future<AttendanceStatus> attendance({String? month}) async {
+    if (fail) throw const ApiException('NETWORK', '연결이 불안정해요.');
+    return _status();
+  }
+
+  @override
+  Future<AttendanceStatus> checkIn() async {
+    if (days.contains(today)) return _status();
+    days.add(today);
+    streak++;
+    var earned = 3;
+    await _give(3, 'ATTENDANCE', '출석 체크');
+    if (streak % 7 == 0) {
+      earned += 5;
+      await _give(5, 'ATTENDANCE_STREAK', '7일 연속 출석 보너스');
+    }
+    return _status(justChecked: true, earned: earned);
+  }
+
+  @override
+  Future<AdStatus> adStatus() async =>
+      AdStatus(rewardPoints: 2, dailyMax: 5, todayCount: adToday, remaining: 5 - adToday);
+
+  @override
+  Future<AdStatus> devAdReward() async {
+    if (adToday < 5) {
+      adToday++;
+      await _give(2, 'AD_REWARD', '광고 보상');
+    }
+    return adStatus();
+  }
+
+  @override
+  Future<LedgerPage> history({String? cursor}) async => LedgerPage(List.of(ledger), null);
+
+  @override
+  Future<AchievementBook> achievements() async =>
+      AchievementBook(List.of(book), (await _me()).titleId);
+
+  @override
+  Future<List<Achievement>> unseen() async => List.of(pending);
+
+  @override
+  Future<void> markSeen(List<String> ids) async {
+    seen.addAll(ids);
+    pending.removeWhere((a) => ids.contains(a.id));
+  }
+
+  @override
+  Future<void> setTitle(String? achievementId) async {
+    final u = await _me();
+    u.titleId = achievementId;
+    u.title = book.where((a) => a.id == achievementId).firstOrNull?.titleText;
+  }
+
+  Future<List<StationeryItem>> stationery() async => [
+    StationeryItem('cream', '크림', '가입하면 바로 받아요', owned: owned.contains('cream')),
+    StationeryItem('lined', '줄노트', '출석 7일을 채우면 열려요', owned: owned.contains('lined')),
+    StationeryItem('sky-cloud', '하늘 구름', '10개 시를 방문하면 열려요', owned: owned.contains('sky-cloud')),
+  ];
+}
+
+class FakeAdGateway implements AdGateway {
+  FakeAdGateway({this.result = AdShowResult.rewarded});
+
+  AdShowResult result;
+  int shown = 0;
+
+  @override
+  Future<AdShowResult> showRewarded({required String userId, required bool underAge}) async {
+    shown++;
+    return result;
+  }
+}
+
+List<Achievement> sampleAchievements() => [
+  const Achievement(
+    id: 'first-letter',
+    name: '첫 편지',
+    description: '처음으로 편지를 맡겼어요',
+    rewardPoints: 2,
+    titleText: '새내기 편지꾼',
+    achieved: true,
+    current: 1,
+  ),
+  const Achievement(
+    id: 'attend-7',
+    name: '출석 7일',
+    description: '7일 출석했어요',
+    rewardPoints: 3,
+    stationeryId: 'lined',
+    stationeryName: '줄노트',
+    current: 3,
+    target: 7,
+  ),
+  const Achievement(
+    id: 'visit-city-10',
+    name: '열 고을',
+    description: '10개 시를 방문했어요',
+    rewardPoints: 3,
+    stationeryId: 'sky-cloud',
+    stationeryName: '하늘 구름',
+    current: 6,
+    target: 10,
+  ),
+  const Achievement(
+    id: 'pen-pal-5',
+    name: '단짝',
+    description: '같은 친구와 5번 주고받았어요',
+    rewardPoints: 5,
+    titleText: '단짝',
+    target: 5,
+  ),
+];

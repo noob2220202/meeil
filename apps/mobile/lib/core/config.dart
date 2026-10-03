@@ -28,6 +28,12 @@ abstract final class AppConfig {
       firebaseSenderId.isNotEmpty &&
       firebaseProjectId.isNotEmpty;
 
+  /// 보상형 광고 단위. 기본값은 구글이 제공하는 테스트 광고(개발 중에는 테스트 광고만, CLAUDE.md).
+  static const admobRewardedUnitId = String.fromEnvironment(
+    'ADMOB_REWARDED_UNIT_ID',
+    defaultValue: 'ca-app-pub-3940256099942544/5224354917',
+  );
+
   static bool get kakaoEnabled => kakaoNativeAppKey.isNotEmpty;
   static bool get googleEnabled => googleServerClientId.isNotEmpty;
 }

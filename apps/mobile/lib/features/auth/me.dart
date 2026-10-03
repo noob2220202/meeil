@@ -9,6 +9,9 @@ class Me {
     required this.birthDateSet,
     required this.nicknameSet,
     this.nicknameChangeableAt,
+    this.title,
+    this.titleAchievementId,
+    this.adsUnderAge = true,
   });
 
   factory Me.fromJson(Map<String, dynamic> j) {
@@ -23,6 +26,9 @@ class Me {
       birthDateSet: ob['birthDateSet'] as bool,
       nicknameSet: ob['nicknameSet'] as bool,
       nicknameChangeableAt: changeable == null ? null : DateTime.parse(changeable),
+      title: j['title'] as String?,
+      titleAchievementId: j['titleAchievementId'] as String?,
+      adsUnderAge: (j['ads'] as Map<String, dynamic>?)?['underAge'] as bool? ?? true,
     );
   }
 
@@ -34,6 +40,13 @@ class Me {
   final bool birthDateSet;
   final bool nicknameSet;
   final DateTime? nicknameChangeableAt;
+
+  /// 닉네임 옆 칭호
+  final String? title;
+  final String? titleAchievementId;
+
+  /// 광고 요청에 청소년 설정을 적용할지(생년월일은 서버만 안다)
+  final bool adsUnderAge;
 
   bool get onboardingCompleted => termsAgreed && birthDateSet && nicknameSet;
 }

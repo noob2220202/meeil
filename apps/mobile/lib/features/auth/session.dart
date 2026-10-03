@@ -96,6 +96,16 @@ class SessionController extends Notifier<SessionState> {
   /// 가입 단계 API 호출 후 갱신된 내 정보 반영
   void update(Me me) => state = SignedIn(me);
 
+  /// 포인트·칭호가 바뀌었을 때 내 정보 다시 받기(실패해도 조용히 넘어간다)
+  Future<void> refreshMe() async {
+    if (state is! SignedIn) return;
+    try {
+      state = SignedIn(await _api.me());
+    } on ApiException {
+      // 다음 기회에
+    }
+  }
+
   /// 만 14세 미만: 서버가 계정을 지웠으므로 기기 토큰도 지우고 안내 화면으로
   Future<void> rejectUnderAge() async {
     await _store.clear();

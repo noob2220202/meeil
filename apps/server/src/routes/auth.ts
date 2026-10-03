@@ -39,7 +39,11 @@ export const authRoutes: FastifyPluginAsync<{
     if (user.status === 'BANNED') throw new AppError(403, 'BANNED', '이용이 정지된 계정이에요.');
     await app.db.user.update({ where: { id: user.id }, data: { lastActiveAt: new Date() } });
     const tokens = await app.tokens.issue(user.id);
-    return { ...tokens, isNew, me: toMeDto(user) };
+    const full = await app.db.user.findUniqueOrThrow({
+      where: { id: user.id },
+      include: { titleAchievement: { select: { titleText: true } } },
+    });
+    return { ...tokens, isNew, me: toMeDto(full) };
   }
 
   app.post('/auth/kakao', authLimit, async (req) => {

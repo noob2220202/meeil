@@ -93,7 +93,7 @@ void main() {
     // 홈 = 지도 탭(위치 권한 없음 → 위치 켜기 안내)
     expect(find.text('우리 동네 염소를 기다려 볼까요?'), findsOneWidget);
     await tapText(tester, '내 정보');
-    expect(find.text('뽀얀염소님, 어서 와요!'), findsOneWidget);
+    expect(find.text('뽀얀염소'), findsOneWidget);
     expect(find.text('5P'), findsOneWidget);
     expect(store.tokens, isNotNull);
 
@@ -101,7 +101,7 @@ void main() {
     await launch(tester, await appOverrides(backend: backend, store: store));
     expect(find.text('우리 동네 염소를 기다려 볼까요?'), findsOneWidget);
     await tapText(tester, '내 정보');
-    expect(find.text('뽀얀염소님, 어서 와요!'), findsOneWidget);
+    expect(find.text('뽀얀염소'), findsOneWidget);
 
     // 로그아웃 → 로그인 화면(소개는 다시 안 봄)
     await tapText(tester, '로그아웃');
