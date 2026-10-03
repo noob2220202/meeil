@@ -9,6 +9,13 @@ import type { Env } from './env.js';
 import { AppError } from './errors.js';
 import { authRoutes } from './routes/auth.js';
 import { goatRoutes } from './routes/goats.js';
+import { letterRoutes } from './routes/letters.js';
+import { mediaRoutes, photoRoutes } from './routes/photos.js';
+import { userRoutes } from './routes/users.js';
+import { LetterService } from './letters/service.js';
+import { noopModerator, type PhotoModerator } from './photos/process.js';
+import { FcmPusher, LogPusher, MemoryPusher, type Pusher } from './push/push.js';
+import { LocalStorage, R2Storage, type Storage } from './storage/storage.js';
 import { healthRoutes } from './routes/health.js';
 import { meRoutes } from './routes/me.js';
 import { regionRoutes } from './routes/regions.js';
@@ -17,7 +24,37 @@ import { ScheduleService } from './schedule/service.js';
 declare module 'fastify' {
   interface FastifyInstance {
     db: Db;
+    letters: LetterService;
   }
+}
+
+export function createStorage(env: Env, now: () => Date = () => new Date()): Storage {
+  if (env.STORAGE_DRIVER === 'r2') {
+    return new R2Storage(
+      env.R2_ACCOUNT_ID,
+      env.R2_ACCESS_KEY_ID,
+      env.R2_SECRET_ACCESS_KEY,
+      env.R2_BUCKET,
+    );
+  }
+  return new LocalStorage(
+    env.LOCAL_STORAGE_DIR,
+    env.PUBLIC_BASE_URL,
+    env.MEDIA_SIGNING_SECRET ?? `media:${env.JWT_SECRET}`,
+    now,
+  );
+}
+
+export function createPusher(env: Env, db: Db): Pusher {
+  if (env.FCM_PROJECT_ID && env.FCM_CLIENT_EMAIL && env.FCM_PRIVATE_KEY) {
+    return new FcmPusher(db, {
+      projectId: env.FCM_PROJECT_ID,
+      clientEmail: env.FCM_CLIENT_EMAIL,
+      privateKey: env.FCM_PRIVATE_KEY,
+    });
+  }
+  if (env.NODE_ENV === 'test') return new MemoryPusher();
+  return new LogPusher((m) => console.info(m));
 }
 
 export interface AppOptions {
@@ -28,6 +65,9 @@ export interface AppOptions {
   social?: SocialVerifier;
   now?: () => Date;
   schedule?: ScheduleService;
+  storage?: Storage;
+  pusher?: Pusher;
+  moderate?: PhotoModerator;
   /** 요청 제한. 테스트에서만 끈다 */
   rateLimit?: boolean;
 }
@@ -40,6 +80,9 @@ export async function buildApp({
   now = () => new Date(),
   rateLimit: rateLimitEnabled = true,
   schedule = new ScheduleService(db),
+  storage = createStorage(env, now),
+  pusher = createPusher(env, db),
+  moderate = noopModerator,
 }: AppOptions): Promise<FastifyInstance> {
   const app = Fastify({
     logger: logger ? { level: env.NODE_ENV === 'production' ? 'info' : 'debug' } : false,
@@ -98,5 +141,11 @@ export async function buildApp({
   });
   await app.register(meRoutes, { now });
   await app.register(goatRoutes, { schedule, now });
+  const letters = new LetterService(db, storage, pusher, now);
+  app.decorate('letters', letters);
+  await app.register(letterRoutes, { letters });
+  await app.register(photoRoutes, { storage, moderate });
+  if (storage instanceof LocalStorage) await app.register(mediaRoutes, { storage });
+  await app.register(userRoutes);
   return app;
 }

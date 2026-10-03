@@ -42,6 +42,8 @@ model User {
   lastRegionReportedAt DateTime?
   randomReceive        Boolean    @default(true)
   notifyEnabled        Boolean    @default(true)
+  /// "염소가 우리 동네에 왔어요" 알림을 마지막으로 보낸 시각(과다 발송 방지)
+  lastGoatNotifiedAt   DateTime?
   /// 원장(points_ledger)의 합계 캐시. 권위는 원장이다.
   pointsBalance        Int        @default(0)
   titleAchievementId   String?
@@ -70,6 +72,7 @@ model User {
   blockedBy        Block[]            @relation("Blocked")
   fcmTokens        FcmToken[]
   sanctions        Sanction[]
+  letterPhotos     LetterPhoto[]
 
   @@index([lastRegionCode, randomReceive, lastActiveAt])
   @@map("users")
@@ -266,7 +269,12 @@ model Letter {
   stationeryId       String
   stickers           Json         @default("[]")
   status             LetterStatus @default(HANDED)
+  /// 목적지에 편지를 가져다준 배달 염소
   goatId             String?
+  /// 출발지에서 편지를 받아 간 배달 염소
+  pickupGoatId       String?
+  /// 같은 요청을 다시 보내도 한 통만 맡겨지도록(앱이 생성)
+  clientRequestId    String?
   express            Boolean      @default(false)
   handedAt           DateTime     @default(now())
   etaAt              DateTime?
@@ -290,15 +298,18 @@ model Letter {
   photo      LetterPhoto?
   reports    Report[]
 
+  @@unique([senderId, clientRequestId])
   @@index([recipientId, status, deliveredAt])
   @@index([senderId, handedAt])
   @@index([status, etaAt])
   @@map("letters")
 }
 
+/// 편지 사진. 먼저 올리고(letterId 없음), 편지를 맡길 때 연결한다. 연결 안 된 사진은 하루 뒤 지운다.
 model LetterPhoto {
   id           String    @id @default(uuid(7)) @db.Uuid
-  letterId     String    @unique @db.Uuid
+  letterId     String?   @unique @db.Uuid
+  uploaderId   String    @db.Uuid
   /// 비공개 R2 객체 키. 서명 URL로만 제공.
   storageKey   String
   width        Int
@@ -308,10 +319,12 @@ model LetterPhoto {
   reviewedById String?   @db.Uuid
   createdAt    DateTime  @default(now())
 
-  letter     Letter     @relation(fields: [letterId], references: [id], onDelete: Cascade)
+  letter     Letter?    @relation(fields: [letterId], references: [id], onDelete: Cascade)
+  uploader   User       @relation(fields: [uploaderId], references: [id], onDelete: Cascade)
   reviewedBy AdminUser? @relation(fields: [reviewedById], references: [id])
 
   @@index([reviewedAt, createdAt])
+  @@index([uploaderId, createdAt])
   @@map("letter_photos")
 }
 

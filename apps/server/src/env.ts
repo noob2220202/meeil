@@ -30,7 +30,34 @@ const EnvSchema = z
     GOOGLE_CLIENT_IDS: csv,
     /** 개발용 로그인(/auth/dev). production에서는 켤 수 없다 */
     AUTH_DEV_LOGIN: bool,
+    /** 사진 저장소: local(개발·테스트) 또는 r2(운영, 비공개 버킷) */
+    STORAGE_DRIVER: z.enum(['local', 'r2']).default('local'),
+    LOCAL_STORAGE_DIR: z.string().default('./.storage'),
+    /** 서명 URL을 만들 때 쓰는 이 서버의 바깥 주소(local 드라이버) */
+    PUBLIC_BASE_URL: z.string().url().default('http://localhost:3000'),
+    /** local 드라이버 서명 URL용 HMAC 키(32자 이상). 없으면 JWT_SECRET에서 파생 */
+    MEDIA_SIGNING_SECRET: z.string().min(32).optional(),
+    R2_ACCOUNT_ID: z.string().default(''),
+    R2_ACCESS_KEY_ID: z.string().default(''),
+    R2_SECRET_ACCESS_KEY: z.string().default(''),
+    R2_BUCKET: z.string().default(''),
+    /** FCM HTTP v1 서비스 계정. 비어 있으면 푸시는 로그로만 남긴다 */
+    FCM_PROJECT_ID: z.string().default(''),
+    FCM_CLIENT_EMAIL: z.string().default(''),
+    /** PEM. 환경변수에서는 줄바꿈을 \\n으로 넣어도 된다 */
+    FCM_PRIVATE_KEY: z.string().default(''),
+    /** 배치 작업(pg-boss). 테스트에서는 끈다 */
+    JOBS_ENABLED: z
+      .enum(['true', 'false', '1', '0', ''])
+      .default('true')
+      .transform((v) => v !== 'false' && v !== '0'),
   })
+  .refine(
+    (e) =>
+      e.STORAGE_DRIVER !== 'r2' ||
+      Boolean(e.R2_ACCOUNT_ID && e.R2_ACCESS_KEY_ID && e.R2_SECRET_ACCESS_KEY && e.R2_BUCKET),
+    { message: 'STORAGE_DRIVER=r2에는 R2_* 값이 모두 필요합니다', path: ['STORAGE_DRIVER'] },
+  )
   .refine((e) => !(e.NODE_ENV === 'production' && e.AUTH_DEV_LOGIN), {
     message: 'production에서는 AUTH_DEV_LOGIN을 켤 수 없습니다',
     path: ['AUTH_DEV_LOGIN'],
