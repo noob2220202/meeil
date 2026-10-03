@@ -68,5 +68,7 @@ export async function resetUsers(db: Db): Promise<void> {
   await db.letter.updateMany({ data: { replyToId: null } });
   await db.letter.deleteMany({});
   await db.letterPhoto.deleteMany({});
+  await db.rollingEntry.deleteMany({});
+  await db.rollingPaper.deleteMany({});
   await db.user.deleteMany({});
 }

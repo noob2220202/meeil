@@ -9,6 +9,8 @@ import '../letters/letters_api.dart';
 import '../letters/mailbox_providers.dart';
 import '../letters/mailbox_tab.dart';
 import '../map/map_tab.dart';
+import '../rolling/rolling_api.dart';
+import '../rolling/rolling_tab.dart';
 
 /// 하단 탭: 지도 / 편지함 / 롤링 / 내 정보 (SPEC 10)
 class MainShell extends ConsumerStatefulWidget {
@@ -47,11 +49,7 @@ class _MainShellState extends ConsumerState<MainShell> {
     final tabs = [
       MapTab(clock: widget.mapClock),
       MailboxTab(initialBox: widget.initialBox),
-      const _ComingSoon(
-        illustration: Illustration.scroll,
-        title: '롤링페이퍼는 곧 열려요',
-        body: '두루마리 염소가 오면\n우리 동네 사람들과 한 장을 채워요.',
-      ),
+      const RollingTab(),
       const ProfileTab(),
     ];
     return Scaffold(
@@ -83,7 +81,11 @@ class _MainShellState extends ConsumerState<MainShell> {
             key: const ValueKey('main-nav'),
             selectedIndex: _index,
             height: 68,
-            onDestinationSelected: (i) => setState(() => _index = i),
+            onDestinationSelected: (i) {
+              // 롤링 탭을 열 때마다 이번 장 상태를 새로
+              if (i == 2 && _index != 2) ref.invalidate(rollingSummaryProvider);
+              setState(() => _index = i);
+            },
             destinations: [
               const NavigationDestination(icon: Icon(Icons.map_rounded), label: '지도'),
               NavigationDestination(
@@ -97,36 +99,6 @@ class _MainShellState extends ConsumerState<MainShell> {
               ),
               const NavigationDestination(icon: Icon(Icons.history_edu_rounded), label: '롤링'),
               const NavigationDestination(icon: Icon(Icons.person_rounded), label: '내 정보'),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _ComingSoon extends StatelessWidget {
-  const _ComingSoon({required this.illustration, required this.title, required this.body});
-
-  final Illustration illustration;
-  final String title;
-  final String body;
-
-  @override
-  Widget build(BuildContext context) {
-    final text = Theme.of(context).textTheme;
-    return SafeArea(
-      child: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              IllustrationImage(illustration, size: 140),
-              const SizedBox(height: 20),
-              Text(title, style: text.headlineMedium),
-              const SizedBox(height: 10),
-              Text(body, textAlign: TextAlign.center, style: text.bodyLarge?.copyWith(height: 1.6)),
             ],
           ),
         ),

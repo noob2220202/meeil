@@ -16,6 +16,8 @@ import 'package:meeil/features/letters/letters_api.dart';
 import 'package:meeil/features/goats/schedule.dart';
 import 'package:meeil/features/location/my_region.dart';
 import 'package:meeil/features/onboarding/permissions_screen.dart';
+import 'package:meeil/features/rolling/rolling_api.dart';
+import 'package:meeil/features/rolling/rolling_models.dart';
 
 import 'dart:convert';
 import 'dart:io';
@@ -173,6 +175,7 @@ Future<List<Override>> appOverrides({
   LocationSource? location,
   RegionApi? regionApi,
   FakeLettersApi? letters,
+  FakeRollingApi? rolling,
   bool scheduleFails = false,
 }) async {
   final prefs = await SharedPreferences.getInstance();
@@ -186,6 +189,7 @@ Future<List<Override>> appOverrides({
     regionDataProvider.overrideWith((ref) async => testRegionData),
     goatsApiProvider.overrideWithValue(FakeGoatsApi(store, fail: scheduleFails)),
     lettersApiProvider.overrideWithValue(letters ?? FakeLettersApi(store)),
+    rollingApiProvider.overrideWithValue(rolling ?? FakeRollingApi(store)),
     regionApiProvider.overrideWithValue(regionApi ?? FakeRegionApi(store)),
     locationSourceProvider.overrideWithValue(
       location ?? FakeLocationSource(grant: LocationAccess.denied),
@@ -383,3 +387,115 @@ class FixedClock extends ClockTick {
   @override
   DateTime build() => at;
 }
+
+/// 롤링페이퍼 가짜 서버. 레벨별 이번 장 하나씩 + 앨범.
+class FakeRollingApi extends RollingApi {
+  FakeRollingApi(MemoryTokenStore store, {DateTime? now})
+    : now = now ?? fixtureNow,
+      super(ApiClient(baseUrl: 'http://fake.invalid', tokenStore: store));
+
+  final DateTime now;
+  final views = <RollingLevel, RollingView>{};
+  final errors = <RollingLevel, String>{};
+  final album_ = <RollingPaper>[];
+  final closed = <String, RollingView>{};
+  final joins = <(String, String, List<PlacedSticker>)>[];
+  ApiException? joinError;
+  bool fail = false;
+
+  static RollingPaper paper(
+    RollingLevel level, {
+    String? id,
+    String scopeName = '서울 종로구',
+    String? topic,
+    DateTime? start,
+    DateTime? end,
+    int? entryCount,
+  }) => RollingPaper(
+    id: id ?? 'paper-${level.api.toLowerCase()}',
+    level: level,
+    scopeCode: level == RollingLevel.nation ? 'KR' : '11110',
+    scopeName: scopeName,
+    topic: topic,
+    periodStart: start ?? DateTime.utc(2026, 10, 2, 15),
+    periodEnd: end ?? DateTime.utc(2026, 10, 3, 15),
+    goatName: '분홍이',
+    entryCount: entryCount,
+  );
+
+  static RollingView view(
+    RollingPaper p, {
+    List<RollingEntry> entries = const [],
+    bool canJoin = false,
+    bool joined = false,
+    JoinBlock? block,
+    DateTime? next,
+    bool closed = false,
+  }) => RollingView(
+    paper: p,
+    entries: entries,
+    entryCount: entries.length,
+    joined: joined,
+    canJoin: canJoin,
+    joinBlock: block,
+    goatHere: canJoin,
+    goatNextArriveAt: next,
+    closed: closed,
+  );
+
+  RollingView? _byId(String id) =>
+      closed[id] ?? views.values.where((v) => v.paper.id == id).firstOrNull;
+
+  @override
+  Future<RollingSummary> summary() async {
+    if (fail) throw const ApiException('NETWORK', '연결이 불안정해요.');
+    return RollingSummary(Map.of(views), Map.of(errors));
+  }
+
+  @override
+  Future<RollingView> current(RollingLevel level) async => views[level]!;
+
+  @override
+  Future<RollingView> get(String id) async {
+    final v = _byId(id);
+    if (v == null) throw const ApiException('PAPER_NOT_FOUND', '두루마리를 찾을 수 없어요.', statusCode: 404);
+    return v;
+  }
+
+  @override
+  Future<RollingEntry> join(String paperId, String body, List<PlacedSticker> stickers) async {
+    if (joinError != null) throw joinError!;
+    joins.add((paperId, body, stickers));
+    final e = RollingEntry(
+      id: 'entry-${joins.length}',
+      author: const Person(id: 'me', nickname: '나', title: '새내기 우체부'),
+      body: body,
+      stickers: stickers,
+      mine: true,
+      createdAt: now,
+    );
+    for (final key in views.keys.toList()) {
+      if (views[key]!.paper.id == paperId) views[key] = views[key]!.withEntry(e);
+    }
+    return e;
+  }
+
+  @override
+  Future<List<RollingPaper>> album() async => List.of(album_);
+}
+
+RollingEntry sampleEntry(
+  String id,
+  String nickname,
+  String body, {
+  String? title,
+  List<PlacedSticker> stickers = const [],
+  bool mine = false,
+}) => RollingEntry(
+  id: id,
+  author: Person(id: 'u-$id', nickname: nickname, title: title),
+  body: body,
+  stickers: stickers,
+  mine: mine,
+  createdAt: fixtureNow.subtract(const Duration(hours: 2)),
+);

@@ -11,7 +11,9 @@ import { authRoutes } from './routes/auth.js';
 import { goatRoutes } from './routes/goats.js';
 import { letterRoutes } from './routes/letters.js';
 import { mediaRoutes, photoRoutes } from './routes/photos.js';
+import { rollingRoutes } from './routes/rolling.js';
 import { userRoutes } from './routes/users.js';
+import { RollingService } from './rolling/service.js';
 import { LetterService } from './letters/service.js';
 import { noopModerator, type PhotoModerator } from './photos/process.js';
 import { FcmPusher, LogPusher, MemoryPusher, type Pusher } from './push/push.js';
@@ -147,5 +149,6 @@ export async function buildApp({
   await app.register(photoRoutes, { storage, moderate });
   if (storage instanceof LocalStorage) await app.register(mediaRoutes, { storage });
   await app.register(userRoutes);
+  await app.register(rollingRoutes, { rolling: new RollingService(db, now) });
   return app;
 }

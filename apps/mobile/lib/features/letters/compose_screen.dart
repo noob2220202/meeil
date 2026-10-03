@@ -227,7 +227,7 @@ class _ComposeScreenState extends ConsumerState<ComposeScreen> {
                     const SizedBox(height: 14),
                     _StationeryRow(selected: draft.stationeryId, onSelect: _c.setStationery),
                     const SizedBox(height: 14),
-                    _StickerTray(full: draft.stickers.length >= stickersMax, onAdd: _c.addSticker),
+                    StickerTray(full: draft.stickers.length >= stickersMax, onAdd: _c.addSticker),
                     const SizedBox(height: 14),
                     _PhotoRow(
                       path: draft.photoPath,
@@ -481,8 +481,9 @@ class _StationeryRow extends ConsumerWidget {
   }
 }
 
-class _StickerTray extends StatelessWidget {
-  const _StickerTray({required this.full, required this.onAdd});
+/// 스티커 고르기 줄(편지 쓰기·롤링 한마디 공용)
+class StickerTray extends StatelessWidget {
+  const StickerTray({super.key, required this.full, required this.onAdd});
 
   final bool full;
   final ValueChanged<String> onAdd;

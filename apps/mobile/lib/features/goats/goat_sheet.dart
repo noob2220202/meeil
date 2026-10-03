@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../app/theme.dart';
 import '../../data/regions.dart';
@@ -91,6 +92,7 @@ class _GoatSheetState extends State<GoatSheet> {
       status: '늘 ${region?.fullName ?? '이 시'}에 머물러요',
       detail: '이 염소가 가진 두루마리는 하루에 한 장씩 새로 펼쳐져요.',
       stops: const [],
+      rolling: true,
     );
   }
 
@@ -122,6 +124,7 @@ class _GoatSheetState extends State<GoatSheet> {
           ? '걸음 빠르기 시속 ${g.speedKmh.round()}km · 편지 가방을 메고 다녀요'
           : '걸음 빠르기 시속 ${g.speedKmh.round()}km · 두루마리를 지고 다녀요',
       stops: track.upcoming(now),
+      rolling: g.kind != GoatKind.delivery,
     );
   }
 
@@ -133,6 +136,7 @@ class _GoatSheetState extends State<GoatSheet> {
     required String status,
     String? detail,
     required List<GoatStop> stops,
+    bool rolling = false,
   }) {
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -217,6 +221,24 @@ class _GoatSheetState extends State<GoatSheet> {
                 ],
               ),
             ),
+        ],
+        if (rolling) ...[
+          const SizedBox(height: 16),
+          OutlinedButton.icon(
+            key: const ValueKey('goat-open-rolling'),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: Palette.textBrown,
+              backgroundColor: Colors.white,
+              side: const BorderSide(color: Palette.outline, width: 2),
+              padding: const EdgeInsets.symmetric(vertical: 12),
+            ),
+            onPressed: () {
+              Navigator.of(context).pop();
+              context.go('/?tab=2');
+            },
+            icon: const Icon(Icons.history_edu_rounded),
+            label: const Text('두루마리 보러 가기'),
+          ),
         ],
       ],
     );

@@ -18,6 +18,8 @@ import '../features/onboarding/permissions_screen.dart';
 import '../features/onboarding/splash_screen.dart';
 import '../features/onboarding/terms_screen.dart';
 import '../features/onboarding/under_age_screen.dart';
+import '../features/rolling/rolling_album_screen.dart';
+import '../features/rolling/rolling_paper_screen.dart';
 import 'routes.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
@@ -56,6 +58,11 @@ final routerProvider = Provider<GoRouter>((ref) {
         ),
       ),
       GoRoute(path: '/compose', builder: (_, _) => const ComposeScreen()),
+      GoRoute(path: '/rolling/album', builder: (_, _) => const RollingAlbumScreen()),
+      GoRoute(
+        path: '/rolling/:id',
+        builder: (_, state) => RollingPaperScreen(id: state.pathParameters['id']!),
+      ),
       GoRoute(
         path: '/letters/:id',
         builder: (_, state) => LetterScreen(
