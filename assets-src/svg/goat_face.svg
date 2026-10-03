@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240">
+  <!-- 우체부 염소 얼굴. 외곽선 #7A5C48, 모자 #3D7DD8 -->
+  <!-- 뿔: 외곽선 굵은 선 위에 크림색 선을 겹쳐 둥근 뿔을 만든다 -->
+  <g fill="none" stroke-linecap="round">
+    <path d="M96 84 Q88 58 70 52" stroke="#7A5C48" stroke-width="22"/>
+    <path d="M144 84 Q152 58 170 52" stroke="#7A5C48" stroke-width="22"/>
+    <path d="M96 84 Q88 58 70 52" stroke="#F3E3C3" stroke-width="11"/>
+    <path d="M144 84 Q152 58 170 52" stroke="#F3E3C3" stroke-width="11"/>
+  </g>
+  <g stroke="#7A5C48" stroke-width="6" stroke-linejoin="round" stroke-linecap="round">
+    <!-- 귀 -->
+    <g transform="rotate(-24 58 128)">
+      <ellipse cx="40" cy="128" rx="30" ry="15" fill="#FFFFFF"/>
+      <ellipse cx="38" cy="128" rx="17" ry="7" fill="#FFC9D6" stroke="none"/>
+    </g>
+    <g transform="rotate(24 182 128)">
+      <ellipse cx="200" cy="128" rx="30" ry="15" fill="#FFFFFF"/>
+      <ellipse cx="202" cy="128" rx="17" ry="7" fill="#FFC9D6" stroke="none"/>
+    </g>
+    <!-- 머리 -->
+    <path d="M120 66 C162 66 184 96 184 132 C184 172 158 198 120 198 C82 198 56 172 56 132 C56 96 78 66 120 66 Z" fill="#FFFFFF"/>
+    <!-- 수염 -->
+    <path d="M109 190 Q110 206 120 214 Q130 206 131 190 Z" fill="#FFFFFF"/>
+  </g>
+  <!-- 주둥이 -->
+  <ellipse cx="120" cy="168" rx="30" ry="20" fill="#FFF3E6"/>
+  <!-- 볼터치 -->
+  <ellipse cx="80" cy="156" rx="12" ry="7" fill="#FFB3C4" opacity="0.85"/>
+  <ellipse cx="160" cy="156" rx="12" ry="7" fill="#FFB3C4" opacity="0.85"/>
+  <!-- 눈 -->
+  <ellipse cx="98" cy="138" rx="9.5" ry="12" fill="#3B2A20"/>
+  <ellipse cx="142" cy="138" rx="9.5" ry="12" fill="#3B2A20"/>
+  <circle cx="101.5" cy="133" r="3.6" fill="#FFFFFF"/>
+  <circle cx="145.5" cy="133" r="3.6" fill="#FFFFFF"/>
+  <circle cx="96" cy="143" r="1.6" fill="#FFFFFF"/>
+  <circle cx="140" cy="143" r="1.6" fill="#FFFFFF"/>
+  <!-- 코·입 -->
+  <g stroke="#7A5C48" stroke-width="4.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M114 161 L120 165 L126 161"/>
+    <path d="M120 165 L120 170 M108 170 Q114 178 120 170 Q126 178 132 170"/>
+  </g>
+  <!-- 우체부 모자 (살짝 기울임) -->
+  <g transform="rotate(-7 120 92)" stroke="#7A5C48" stroke-width="6" stroke-linejoin="round">
+    <path d="M70 100 C64 50 176 50 170 100 Z" fill="#3D7DD8"/>
+    <rect x="68" y="90" width="104" height="16" rx="8" fill="#2E63B0"/>
+    <path d="M80 106 C96 122 144 122 160 106 Z" fill="#2E63B0"/>
+    <g stroke-width="3.5">
+      <rect x="106" y="64" width="28" height="20" rx="3" fill="#FFE08A"/>
+      <path d="M106 66 L120 77 L134 66" fill="none"/>
+    </g>
+  </g>
+</svg>

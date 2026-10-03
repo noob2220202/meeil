@@ -9,6 +9,14 @@
 | Gowun Dodum 폰트  | `apps/mobile/assets/fonts/GowunDodum-Regular.ttf`                             | [Google Fonts](https://fonts.google.com/specimen/Gowun+Dodum)                                                      | SIL OFL 1.1 (`OFL-gowundodum.txt`)     |
 | Gaegu 폰트        | `apps/mobile/assets/fonts/Gaegu-*.ttf`                                        | [Google Fonts](https://fonts.google.com/specimen/Gaegu)                                                            | SIL OFL 1.1 (`OFL-gaegu.txt`)          |
 
+| Material Icons | Flutter SDK 기본 포함 (`uses-material-design`) | [Google Material Icons](https://fonts.google.com/icons) | Apache 2.0 |
+
+## 직접 제작한 자산
+
+| 자산                                           | 원본                                       | 번들                                |
+| ---------------------------------------------- | ------------------------------------------ | ----------------------------------- |
+| 우체부 염소 얼굴, 편지 봉투, 두루마리 일러스트 | `assets-src/svg/*.svg` (손으로 작성한 SVG) | `apps/mobile/assets/illustrations/` |
+
 ## 경계 데이터 출처 표기 (앱 내 "오픈소스 라이선스" 화면에도 표시)
 
 > 본 데이터는 통계청 통계지리정보서비스(SGIS, https://sgis.kostat.go.kr)에서 공공누리 제1유형으로 개방한

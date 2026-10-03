@@ -44,15 +44,16 @@ docs/         DECISIONS.md, 개인정보처리방침/약관 초안, 스토어 �
 사전 준비: Node 22 + pnpm 10, Docker, Flutter 3.47.6(stable) + Android SDK 36.
 - 의존성 설치: `pnpm install` (루트) · `cd apps/mobile && flutter pub get`
 - DB 기동: `docker compose up -d postgres` (최초 1회 `cp apps/server/.env.example apps/server/.env`)
-- DB 마이그레이션·시드: `pnpm --filter @meeil/server db:migrate` · `pnpm --filter @meeil/server db:seed`
+- DB 마이그레이션·시드: `pnpm --filter @meeil/server db:deploy` · `pnpm --filter @meeil/server db:seed`
+- 새 마이그레이션 만들기(비대화형): `mkdir apps/server/prisma/migrations/<YYYYMMDDHHMMSS>_<이름> && pnpm --filter @meeil/server -s db:diff > 그폴더/migration.sql` 후 `db:deploy`
 - 서버 기동: `pnpm --filter @meeil/server dev` (http://localhost:3000/health)
 - 서버 컨테이너(배포 형태): `docker compose --profile full up -d --build`
-- 서버 테스트: `pnpm --filter @meeil/server test` (실제 PostgreSQL 필요)
+- 서버 테스트: `pnpm --filter @meeil/server test` (실제 PostgreSQL 필요. `<DB명>_test` DB를 자동으로 만들어 쓰므로 개발 데이터는 안전)
 - 전체 점검(lint·타입·테스트·포맷): `pnpm lint && pnpm typecheck && pnpm test && pnpm format:check`
 - 관리자 웹: `pnpm --filter @meeil/admin dev` (http://localhost:5173/admin/)
 - 지역 데이터 재생성: `pnpm --filter @meeil/tools-regions build:regions`
 - 스케줄 시뮬레이터: (M2에서 추가)
-- 앱 실행(Galaxy): `cd apps/mobile && flutter run` (USB 디버깅 연결)
+- 앱 실행(Galaxy): `cd apps/mobile && flutter run --dart-define=API_BASE_URL=http://<PC LAN IP>:3000` (USB 디버깅 연결. 소셜 키는 `docs/SOCIAL_LOGIN.md`)
 - 앱 테스트: `cd apps/mobile && flutter analyze && flutter test --exclude-tags screenshot`
 - 앱 스크린샷(Galaxy 해상도): `cd apps/mobile && flutter test --tags screenshot` → `build/screenshots/`
 - 디버그 APK: `cd apps/mobile && flutter build apk --debug`

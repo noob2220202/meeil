@@ -40,7 +40,7 @@ class Region {
 
 class RegionData {
   RegionData({required this.version, required this.provinces, required this.regions})
-      : byCode = {for (final r in regions) r.code: r};
+    : byCode = {for (final r in regions) r.code: r};
 
   final String version;
   final List<Province> provinces;

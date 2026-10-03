@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240">
+  <!-- 롤링페이퍼 두루마리 -->
+  <g stroke="#7A5C48" stroke-width="6" stroke-linejoin="round" stroke-linecap="round">
+    <rect x="58" y="52" width="124" height="140" rx="6" fill="#FFF8EC"/>
+    <rect x="42" y="38" width="156" height="26" rx="13" fill="#BDEBD7"/>
+    <rect x="42" y="180" width="156" height="26" rx="13" fill="#BDEBD7"/>
+    <circle cx="42" cy="51" r="9" fill="#FFE08A"/>
+    <circle cx="198" cy="51" r="9" fill="#FFE08A"/>
+    <circle cx="42" cy="193" r="9" fill="#FFE08A"/>
+    <circle cx="198" cy="193" r="9" fill="#FFE08A"/>
+  </g>
+  <!-- 여러 사람의 글 -->
+  <g stroke-width="5" stroke-linecap="round">
+    <path d="M78 86 H128" stroke="#F28DB2"/>
+    <path d="M78 102 H112" stroke="#F28DB2"/>
+    <path d="M118 124 H162" stroke="#3D7DD8"/>
+    <path d="M132 140 H162" stroke="#3D7DD8"/>
+    <path d="M78 160 H138" stroke="#5BAE6A"/>
+  </g>
+  <g fill="#FF8FAB" stroke="#7A5C48" stroke-width="3" stroke-linejoin="round">
+    <path d="M150 98 C142 92 140 85 145 82 C148 80 150 83 150 83 C150 83 152 80 155 82 C160 85 158 92 150 98 Z"/>
+  </g>
+  <g fill="#FFE08A" stroke="#7A5C48" stroke-width="3" stroke-linejoin="round">
+    <path d="M92 124 L95 131 L102 134 L95 137 L92 144 L89 137 L82 134 L89 131 Z"/>
+  </g>
+</svg>

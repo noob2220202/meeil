@@ -28,6 +28,8 @@ enum AuthProvider {
 model User {
   id                   String     @id @default(uuid(7)) @db.Uuid
   nickname             String?    @unique
+  /// 중복 검사용 정규화 키(NFC + 소문자)
+  nicknameKey          String?    @unique
   nicknameChangedAt    DateTime?
   /// 비공개. 어떤 API 응답에도 노출하지 않는다.
   birthDate            DateTime?  @db.Date
