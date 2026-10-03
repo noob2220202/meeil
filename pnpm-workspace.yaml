@@ -1,0 +1,11 @@
+packages:
+  - apps/server
+  - apps/admin
+  - tools/*
+onlyBuiltDependencies:
+  - '@prisma/engines'
+  - esbuild
+  - prisma
+ignoredBuiltDependencies:
+  - better-sqlite3
+  - msgpackr-extract

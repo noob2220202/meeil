@@ -1,0 +1,55 @@
+name: CI
+
+on:
+  push:
+    branches: ['**']
+    tags: ['m*']
+  pull_request:
+
+jobs:
+  node:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: meeil
+          POSTGRES_PASSWORD: meeil
+          POSTGRES_DB: meeil
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U meeil" --health-interval 5s --health-timeout 3s --health-retries 10
+    env:
+      DATABASE_URL: postgresql://meeil:meeil@localhost:5432/meeil
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm format:check
+      - run: pnpm --filter @meeil/server db:deploy
+      - run: pnpm lint
+      - run: pnpm typecheck
+      # 서버 통합 테스트(실제 PostgreSQL), 지역 도구·관리자 웹 단위 테스트.
+      # M2부터 염소 스케줄 30일 시뮬레이터 테스트가 여기에 포함된다.
+      - run: pnpm test
+      - run: pnpm --filter @meeil/admin build
+
+  mobile:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/mobile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: 3.47.6
+          cache: true
+      - run: flutter pub get
+      - run: flutter analyze --fatal-infos
+      - run: flutter test --exclude-tags screenshot

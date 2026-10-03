@@ -1,0 +1,35 @@
+name: meeil
+description: "염소 우체부 편지 앱"
+publish_to: 'none'
+version: 0.1.0+1
+
+environment:
+  sdk: ^3.13.5
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_riverpod: ^3.4.3
+  go_router: ^18.0.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/map/
+  fonts:
+    - family: Jua
+      fonts:
+        - asset: assets/fonts/Jua-Regular.ttf
+    - family: GowunDodum
+      fonts:
+        - asset: assets/fonts/GowunDodum-Regular.ttf
+    - family: Gaegu
+      fonts:
+        - asset: assets/fonts/Gaegu-Regular.ttf
+        - asset: assets/fonts/Gaegu-Bold.ttf
+          weight: 700

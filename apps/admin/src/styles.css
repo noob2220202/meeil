@@ -1,0 +1,31 @@
+:root {
+  --cream: #fff8ec;
+  --brown: #5a4636;
+  --line: #7a5c48;
+  --mint: #bdebd7;
+  --pink: #ffc9d6;
+  color-scheme: light;
+  font-family: system-ui, 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif;
+}
+body {
+  margin: 0;
+  background: var(--cream);
+  color: var(--brown);
+}
+.shell {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 32px 16px;
+}
+.status {
+  display: inline-block;
+  padding: 8px 12px;
+  border: 2px solid var(--line);
+  border-radius: 12px;
+}
+.status[data-state='ok'] {
+  background: var(--mint);
+}
+.status[data-state='error'] {
+  background: var(--pink);
+}

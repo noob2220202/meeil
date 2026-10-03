@@ -1,0 +1,39 @@
+# 로컬 개발·VPS 배포 공용. 개발 시에는 `docker compose up -d postgres`만 띄우고 서버는 pnpm dev로 실행한다.
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-meeil}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-meeil}
+      POSTGRES_DB: ${POSTGRES_DB:-meeil}
+    ports:
+      - '127.0.0.1:5432:5432'
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-meeil}']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/server/Dockerfile
+    restart: unless-stopped
+    profiles: ['full']
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      HOST: 0.0.0.0
+      DATABASE_URL: postgresql://${POSTGRES_USER:-meeil}:${POSTGRES_PASSWORD:-meeil}@postgres:5432/${POSTGRES_DB:-meeil}
+      CORS_ORIGINS: ${CORS_ORIGINS:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - '127.0.0.1:3000:3000'
+
+volumes:
+  pgdata:

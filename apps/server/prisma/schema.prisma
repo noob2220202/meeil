@@ -1,0 +1,592 @@
+// 메에일 DB 스키마 (SPEC 11.4)
+// 시간은 모두 UTC로 저장한다. 표시는 KST.
+// 정밀 좌표는 어디에도 저장하지 않는다. 사용자 위치는 지역 코드(시)만.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ───────────── 계정 ─────────────
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+  BANNED
+  DELETED
+}
+
+enum AuthProvider {
+  KAKAO
+  GOOGLE
+}
+
+model User {
+  id                   String     @id @default(uuid(7)) @db.Uuid
+  nickname             String?    @unique
+  nicknameChangedAt    DateTime?
+  /// 비공개. 어떤 API 응답에도 노출하지 않는다.
+  birthDate            DateTime?  @db.Date
+  status               UserStatus @default(ACTIVE)
+  suspendedUntil       DateTime?
+  termsAgreedAt        DateTime?
+  privacyAgreedAt      DateTime?
+  homeRegionCode       String?
+  lastRegionCode       String?
+  lastRegionReportedAt DateTime?
+  randomReceive        Boolean    @default(true)
+  notifyEnabled        Boolean    @default(true)
+  /// 원장(points_ledger)의 합계 캐시. 권위는 원장이다.
+  pointsBalance        Int        @default(0)
+  titleAchievementId   String?
+  isOfficial           Boolean    @default(false)
+  createdAt            DateTime   @default(now())
+  lastActiveAt         DateTime   @default(now())
+  deletedAt            DateTime?
+
+  homeRegion       Region?            @relation("UserHomeRegion", fields: [homeRegionCode], references: [code])
+  lastRegion       Region?            @relation("UserLastRegion", fields: [lastRegionCode], references: [code])
+  titleAchievement Achievement?       @relation(fields: [titleAchievementId], references: [id])
+  identities       AuthIdentity[]
+  refreshTokens    RefreshToken[]
+  regionReports    UserRegionReport[]
+  regionVisits     RegionVisit[]
+  sentLetters      Letter[]           @relation("LetterSender")
+  receivedLetters  Letter[]           @relation("LetterRecipient")
+  rollingEntries   RollingEntry[]
+  ledger           PointsLedger[]
+  attendance       Attendance[]
+  achievements     UserAchievement[]
+  stationery       UserStationery[]
+  reportsMade      Report[]           @relation("ReportReporter")
+  reportsReceived  Report[]           @relation("ReportTargetUser")
+  blocking         Block[]            @relation("Blocker")
+  blockedBy        Block[]            @relation("Blocked")
+  fcmTokens        FcmToken[]
+  sanctions        Sanction[]
+
+  @@index([lastRegionCode, randomReceive, lastActiveAt])
+  @@map("users")
+}
+
+model AuthIdentity {
+  id             String       @id @default(uuid(7)) @db.Uuid
+  userId         String       @db.Uuid
+  provider       AuthProvider
+  /// 소셜 계정 고유 ID. 비공개.
+  providerUserId String
+  createdAt      DateTime     @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerUserId])
+  @@index([userId])
+  @@map("auth_identities")
+}
+
+/// refresh 토큰 회전용. 토큰 원문은 저장하지 않고 해시만.
+model RefreshToken {
+  id        String    @id @default(uuid(7)) @db.Uuid
+  userId    String    @db.Uuid
+  familyId  String    @db.Uuid
+  tokenHash String    @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([familyId])
+  @@map("refresh_tokens")
+}
+
+// ───────────── 지역 ─────────────
+
+model Province {
+  code      String @id
+  name      String
+  shortName String
+  version   String
+
+  regions Region[]
+
+  @@map("provinces")
+}
+
+model Region {
+  /// 시 단위 5자리 코드(일반구는 상위 시로 병합)
+  code         String   @id
+  name         String
+  fullName     String
+  provinceCode String
+  /// 지도 표시·염소 정류 위치용 대표점(지역 내부점). 사용자 좌표가 아니다.
+  lon          Float
+  lat          Float
+  neighbors    String[]
+  version      String
+  active       Boolean  @default(true)
+
+  province      Province           @relation(fields: [provinceCode], references: [code])
+  homeUsers     User[]             @relation("UserHomeRegion")
+  lastUsers     User[]             @relation("UserLastRegion")
+  reports       UserRegionReport[]
+  visits        RegionVisit[]
+  scheduleStops GoatScheduleStop[]
+
+  @@index([provinceCode])
+  @@map("regions")
+}
+
+/// 기기에서 판정한 지역 코드 보고 기록(좌표 없음). 이상 이동 검증용, 단기 보관.
+model UserRegionReport {
+  id           String   @id @default(uuid(7)) @db.Uuid
+  userId       String   @db.Uuid
+  regionCode   String
+  reportedAt   DateTime @default(now())
+  accepted     Boolean
+  rejectReason String?
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  region Region @relation(fields: [regionCode], references: [code])
+
+  @@index([userId, reportedAt])
+  @@map("user_region_reports")
+}
+
+/// 업적용 방문 지역 집합. 시각은 저장하지 않는다.
+model RegionVisit {
+  userId     String @db.Uuid
+  regionCode String
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  region Region @relation(fields: [regionCode], references: [code])
+
+  @@id([userId, regionCode])
+  @@map("region_visits")
+}
+
+// ───────────── 염소 ─────────────
+
+enum GoatKind {
+  DELIVERY
+  ROLLING_NATION
+  ROLLING_PROVINCE
+  ROLLING_CITY
+}
+
+model Goat {
+  id         String   @id
+  kind       GoatKind
+  name       String
+  /// 롤링 염소의 담당 범위(시도 코드 또는 시 코드). 배달·전국 염소는 null.
+  scopeCode  String?
+  speedKmh   Float
+  stayMinMin Int
+  stayMaxMin Int
+  hatColor   String
+  bagColor   String
+  sortOrder  Int      @default(0)
+  active     Boolean  @default(true)
+
+  stops   GoatScheduleStop[]
+  letters Letter[]
+
+  @@index([kind])
+  @@map("goats")
+}
+
+model GoatScheduleStop {
+  id         String   @id @default(uuid(7)) @db.Uuid
+  goatId     String
+  regionCode String
+  seq        Int
+  arriveAt   DateTime
+  departAt   DateTime
+  /// 72시간 하드캡 보장을 위한 특급 배달 정류
+  express    Boolean  @default(false)
+
+  goat   Goat   @relation(fields: [goatId], references: [id], onDelete: Cascade)
+  region Region @relation(fields: [regionCode], references: [code])
+
+  @@unique([goatId, seq])
+  @@index([goatId, arriveAt])
+  @@index([regionCode, arriveAt])
+  @@map("goat_schedule_stops")
+}
+
+// ───────────── 편지 ─────────────
+
+enum LetterMode {
+  DIRECT
+  RANDOM
+  REPLY
+}
+
+enum RandomScope {
+  NATION
+  PROVINCE
+  CITY
+}
+
+/// DRAFT는 기기에만 존재. 휴지통·영구삭제는 발신/수신 측 각각의 필드로 관리한다.
+enum LetterStatus {
+  HANDED
+  IN_TRANSIT
+  DELIVERED
+  READ
+  EATEN
+}
+
+model Letter {
+  id                 String       @id @default(uuid(7)) @db.Uuid
+  mode               LetterMode
+  senderId           String       @db.Uuid
+  recipientId        String       @db.Uuid
+  replyToId          String?      @db.Uuid
+  randomScope        RandomScope?
+  randomScopeCode    String?
+  originRegionCode   String
+  destRegionCode     String
+  body               String       @db.VarChar(200)
+  stationeryId       String
+  stickers           Json         @default("[]")
+  status             LetterStatus @default(HANDED)
+  goatId             String?
+  express            Boolean      @default(false)
+  handedAt           DateTime     @default(now())
+  etaAt              DateTime?
+  deliveredAt        DateTime?
+  readAt             DateTime?
+  eatenAt            DateTime?
+  eatenReason        String?
+  /// 수신자가 발신자를 차단한 경우 수신 보관함에서 숨김
+  hiddenForRecipient Boolean      @default(false)
+  senderTrashedAt    DateTime?
+  senderPurgedAt     DateTime?
+  recipientTrashedAt DateTime?
+  recipientPurgedAt  DateTime?
+
+  sender     User         @relation("LetterSender", fields: [senderId], references: [id])
+  recipient  User         @relation("LetterRecipient", fields: [recipientId], references: [id])
+  replyTo    Letter?      @relation("LetterReply", fields: [replyToId], references: [id], onDelete: SetNull)
+  replies    Letter[]     @relation("LetterReply")
+  goat       Goat?        @relation(fields: [goatId], references: [id])
+  stationery Stationery   @relation(fields: [stationeryId], references: [id])
+  photo      LetterPhoto?
+  reports    Report[]
+
+  @@index([recipientId, status, deliveredAt])
+  @@index([senderId, handedAt])
+  @@index([status, etaAt])
+  @@map("letters")
+}
+
+model LetterPhoto {
+  id           String    @id @default(uuid(7)) @db.Uuid
+  letterId     String    @unique @db.Uuid
+  /// 비공개 R2 객체 키. 서명 URL로만 제공.
+  storageKey   String
+  width        Int
+  height       Int
+  bytes        Int
+  reviewedAt   DateTime?
+  reviewedById String?   @db.Uuid
+  createdAt    DateTime  @default(now())
+
+  letter     Letter     @relation(fields: [letterId], references: [id], onDelete: Cascade)
+  reviewedBy AdminUser? @relation(fields: [reviewedById], references: [id])
+
+  @@index([reviewedAt, createdAt])
+  @@map("letter_photos")
+}
+
+// ───────────── 롤링페이퍼 ─────────────
+
+enum RollingLevel {
+  NATION
+  PROVINCE
+  CITY
+}
+
+enum RollingEntryStatus {
+  VISIBLE
+  EATEN
+}
+
+model RollingPaper {
+  id          String       @id @default(uuid(7)) @db.Uuid
+  level       RollingLevel
+  /// 전국은 'KR', 도는 시도 코드, 시는 시 코드
+  scopeCode   String
+  periodStart DateTime
+  periodEnd   DateTime
+  topic       String?
+  createdAt   DateTime     @default(now())
+
+  entries RollingEntry[]
+
+  @@unique([level, scopeCode, periodStart])
+  @@index([level, periodEnd])
+  @@map("rolling_papers")
+}
+
+model RollingEntry {
+  id        String             @id @default(uuid(7)) @db.Uuid
+  paperId   String             @db.Uuid
+  authorId  String             @db.Uuid
+  body      String             @db.VarChar(200)
+  stickers  Json               @default("[]")
+  status    RollingEntryStatus @default(VISIBLE)
+  createdAt DateTime           @default(now())
+  eatenAt   DateTime?
+
+  paper   RollingPaper @relation(fields: [paperId], references: [id], onDelete: Cascade)
+  author  User         @relation(fields: [authorId], references: [id])
+  reports Report[]
+
+  @@unique([paperId, authorId])
+  @@map("rolling_entries")
+}
+
+// ───────────── 포인트 · 출석 · 업적 · 편지지 ─────────────
+
+enum LedgerReason {
+  SIGNUP_BONUS
+  ATTENDANCE
+  ATTENDANCE_STREAK
+  AD_REWARD
+  ACHIEVEMENT
+  LETTER_SEND
+  LETTER_REFUND
+  ADMIN_ADJUST
+}
+
+/// 포인트 원장. 서버가 권위. idempotencyKey로 중복 지급을 막는다(예: AdMob SSV transaction_id).
+model PointsLedger {
+  id             String       @id @default(uuid(7)) @db.Uuid
+  userId         String       @db.Uuid
+  delta          Int
+  balanceAfter   Int
+  reason         LedgerReason
+  refId          String?
+  idempotencyKey String       @unique
+  createdAt      DateTime     @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@map("points_ledger")
+}
+
+model Attendance {
+  userId String   @db.Uuid
+  /// KST 기준 날짜
+  date   DateTime @db.Date
+  streak Int
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, date])
+  @@map("attendance")
+}
+
+model Achievement {
+  id                  String  @id
+  name                String
+  description         String
+  rewardPoints        Int     @default(0)
+  titleText           String?
+  unlocksStationeryId String?
+  sortOrder           Int     @default(0)
+
+  unlocksStationery Stationery?       @relation(fields: [unlocksStationeryId], references: [id])
+  users             UserAchievement[]
+  titleHolders      User[]
+
+  @@map("achievements")
+}
+
+model UserAchievement {
+  userId        String   @db.Uuid
+  achievementId String
+  achievedAt    DateTime @default(now())
+
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  achievement Achievement @relation(fields: [achievementId], references: [id])
+
+  @@id([userId, achievementId])
+  @@map("user_achievements")
+}
+
+model Stationery {
+  id         String  @id
+  name       String
+  /// 해금 조건 설명(표시용)
+  unlockHint String
+  isDefault  Boolean @default(false)
+  sortOrder  Int     @default(0)
+
+  users        UserStationery[]
+  letters      Letter[]
+  achievements Achievement[]
+
+  @@map("stationery")
+}
+
+model UserStationery {
+  userId       String   @db.Uuid
+  stationeryId String
+  unlockedAt   DateTime @default(now())
+
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  stationery Stationery @relation(fields: [stationeryId], references: [id])
+
+  @@id([userId, stationeryId])
+  @@map("user_stationery")
+}
+
+// ───────────── 안전 ─────────────
+
+enum ReportTargetType {
+  LETTER
+  ROLLING_ENTRY
+  USER
+}
+
+enum ReportStatus {
+  OPEN
+  RESOLVED
+  DISMISSED
+}
+
+model Report {
+  id             String           @id @default(uuid(7)) @db.Uuid
+  reporterId     String           @db.Uuid
+  targetType     ReportTargetType
+  letterId       String?          @db.Uuid
+  rollingEntryId String?          @db.Uuid
+  targetUserId   String?          @db.Uuid
+  reason         String
+  detail         String?          @db.VarChar(500)
+  status         ReportStatus     @default(OPEN)
+  createdAt      DateTime         @default(now())
+  resolvedAt     DateTime?
+  resolvedById   String?          @db.Uuid
+
+  reporter     User          @relation("ReportReporter", fields: [reporterId], references: [id])
+  letter       Letter?       @relation(fields: [letterId], references: [id], onDelete: SetNull)
+  rollingEntry RollingEntry? @relation(fields: [rollingEntryId], references: [id], onDelete: SetNull)
+  targetUser   User?         @relation("ReportTargetUser", fields: [targetUserId], references: [id], onDelete: SetNull)
+  resolvedBy   AdminUser?    @relation(fields: [resolvedById], references: [id])
+
+  @@index([status, createdAt])
+  @@map("reports")
+}
+
+model Block {
+  blockerId String   @db.Uuid
+  blockedId String   @db.Uuid
+  createdAt DateTime @default(now())
+
+  blocker User @relation("Blocker", fields: [blockerId], references: [id], onDelete: Cascade)
+  blocked User @relation("Blocked", fields: [blockedId], references: [id], onDelete: Cascade)
+
+  @@id([blockerId, blockedId])
+  @@index([blockedId])
+  @@map("blocks")
+}
+
+enum SanctionType {
+  WARNING
+  SUSPEND_7D
+  BAN
+  LIFT
+}
+
+model Sanction {
+  id        String       @id @default(uuid(7)) @db.Uuid
+  userId    String       @db.Uuid
+  type      SanctionType
+  reason    String
+  adminId   String       @db.Uuid
+  createdAt DateTime     @default(now())
+
+  user  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  admin AdminUser @relation(fields: [adminId], references: [id])
+
+  @@index([userId, createdAt])
+  @@map("sanctions")
+}
+
+model FcmToken {
+  token     String   @id
+  userId    String   @db.Uuid
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("fcm_tokens")
+}
+
+// ───────────── 관리자 ─────────────
+
+enum AdminRole {
+  ADMIN
+  MODERATOR
+}
+
+model AdminUser {
+  id           String    @id @default(uuid(7)) @db.Uuid
+  username     String    @unique
+  passwordHash String
+  /// TOTP 시크릿(암호화 저장은 M6에서)
+  totpSecret   String?
+  role         AdminRole @default(MODERATOR)
+  disabled     Boolean   @default(false)
+  createdAt    DateTime  @default(now())
+  lastLoginAt  DateTime?
+
+  auditLogs       AuditLog[]
+  reviewedPhotos  LetterPhoto[]
+  resolvedReports Report[]
+  sanctions       Sanction[]
+  notices         Notice[]
+
+  @@map("admin_users")
+}
+
+model AuditLog {
+  id         String   @id @default(uuid(7)) @db.Uuid
+  adminId    String   @db.Uuid
+  action     String
+  targetType String?
+  targetId   String?
+  detail     Json?
+  createdAt  DateTime @default(now())
+
+  admin AdminUser @relation(fields: [adminId], references: [id])
+
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+model Notice {
+  id          String    @id @default(uuid(7)) @db.Uuid
+  title       String
+  body        String
+  pinned      Boolean   @default(false)
+  publishedAt DateTime?
+  createdById String    @db.Uuid
+  createdAt   DateTime  @default(now())
+
+  createdBy AdminUser @relation(fields: [createdById], references: [id])
+
+  @@index([publishedAt])
+  @@map("notices")
+}

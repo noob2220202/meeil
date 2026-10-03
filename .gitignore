@@ -1,0 +1,22 @@
+node_modules/
+dist/
+build/
+coverage/
+.env
+.env.*
+!.env.example
+*.log
+.DS_Store
+.idea/
+.vscode/
+# 생성물
+apps/server/src/generated/
+tools/regions/.cache/
+# Flutter
+apps/mobile/.dart_tool/
+apps/mobile/build/
+apps/mobile/.flutter-plugins*
+apps/mobile/android/local.properties
+apps/mobile/android/key.properties
+*.jks
+*.keystore

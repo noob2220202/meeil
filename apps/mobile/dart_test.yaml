@@ -1,0 +1,4 @@
+tags:
+  screenshot:
+    # 스크린샷 생성용. `flutter test --tags screenshot`으로 실행하면 build/screenshots/에 PNG가 생긴다.
+    skip: false
