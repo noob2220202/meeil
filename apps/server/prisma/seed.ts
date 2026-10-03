@@ -2,7 +2,7 @@
 import 'dotenv/config';
 import { readFile } from 'node:fs/promises';
 import { ACHIEVEMENTS } from '../src/catalog/achievements.js';
-import { DELIVERY_GOATS, ROLLING_COLORS } from '../src/catalog/goats.js';
+import { DELIVERY_GOATS, ROLLING_COLORS, ROLLING_STATS } from '../src/catalog/goats.js';
 import { STATIONERY } from '../src/catalog/stationery.js';
 import { createDb, type Db } from '../src/db.js';
 import type { Prisma } from '../src/generated/prisma/client.js';
@@ -76,9 +76,7 @@ export async function seed(db: Db): Promise<void> {
       id: 'rolling-nation',
       kind: 'ROLLING_NATION',
       name: '금빛 두루마리',
-      speedKmh: 60,
-      stayMinMin: 20,
-      stayMaxMin: 30,
+      ...ROLLING_STATS.NATION,
       hatColor: ROLLING_COLORS.NATION.hat,
       bagColor: ROLLING_COLORS.NATION.bag,
       sortOrder: 100,
@@ -88,9 +86,7 @@ export async function seed(db: Db): Promise<void> {
       kind: 'ROLLING_PROVINCE' as const,
       name: `${p.shortName} 민트 두루마리`,
       scopeCode: p.code,
-      speedKmh: 30,
-      stayMinMin: 60,
-      stayMaxMin: 120,
+      ...ROLLING_STATS.PROVINCE,
       hatColor: ROLLING_COLORS.PROVINCE.hat,
       bagColor: ROLLING_COLORS.PROVINCE.bag,
       sortOrder: 200 + i,
@@ -100,9 +96,7 @@ export async function seed(db: Db): Promise<void> {
       kind: 'ROLLING_CITY' as const,
       name: `${r.name} 분홍 두루마리`,
       scopeCode: r.code,
-      speedKmh: 4,
-      stayMinMin: 1440,
-      stayMaxMin: 1440,
+      ...ROLLING_STATS.CITY,
       hatColor: ROLLING_COLORS.CITY.hat,
       bagColor: ROLLING_COLORS.CITY.bag,
       sortOrder: 1000 + i,

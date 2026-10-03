@@ -8,9 +8,11 @@ import type { Db } from './db.js';
 import type { Env } from './env.js';
 import { AppError } from './errors.js';
 import { authRoutes } from './routes/auth.js';
+import { goatRoutes } from './routes/goats.js';
 import { healthRoutes } from './routes/health.js';
 import { meRoutes } from './routes/me.js';
 import { regionRoutes } from './routes/regions.js';
+import { ScheduleService } from './schedule/service.js';
 
 declare module 'fastify' {
   interface FastifyInstance {
@@ -25,6 +27,7 @@ export interface AppOptions {
   /** 테스트에서 소셜 검증·시각을 바꿔 끼운다 */
   social?: SocialVerifier;
   now?: () => Date;
+  schedule?: ScheduleService;
   /** 요청 제한. 테스트에서만 끈다 */
   rateLimit?: boolean;
 }
@@ -36,6 +39,7 @@ export async function buildApp({
   social,
   now = () => new Date(),
   rateLimit: rateLimitEnabled = true,
+  schedule = new ScheduleService(db),
 }: AppOptions): Promise<FastifyInstance> {
   const app = Fastify({
     logger: logger ? { level: env.NODE_ENV === 'production' ? 'info' : 'debug' } : false,
@@ -93,5 +97,6 @@ export async function buildApp({
     rateLimit: rateLimitEnabled,
   });
   await app.register(meRoutes, { now });
+  await app.register(goatRoutes, { schedule, now });
   return app;
 }

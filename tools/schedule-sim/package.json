@@ -1,0 +1,17 @@
+{
+  "name": "@meeil/tools-schedule-sim",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "sim": "tsx src/cli.ts",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src"
+  },
+  "devDependencies": {
+    "@types/node": "26.6.4",
+    "eslint": "9.39.5",
+    "tsx": "4.23.15",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.71.0"
+  }
+}

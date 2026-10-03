@@ -131,3 +131,68 @@ export function addIslandNeighbors(
   }
   return new Map([...out].map(([key, v]) => [key, [...v].sort()]));
 }
+
+/**
+ * 이웃 그래프가 여러 덩어리로 나뉘어 있으면(제주처럼 섬끼리만 이어진 경우)
+ * 가장 큰 덩어리에 가장 가까운 지역 쌍을 이어 하나로 만든다.
+ */
+export function connectComponents(
+  neighbors: Map<string, string[]>,
+  centers: Map<string, readonly [number, number]>,
+): Map<string, string[]> {
+  const out = new Map([...neighbors].map(([k, v]) => [k, new Set(v)]));
+  for (;;) {
+    const comps: string[][] = [];
+    const seen = new Set<string>();
+    for (const start of out.keys()) {
+      if (seen.has(start)) continue;
+      const comp: string[] = [];
+      const stack = [start];
+      seen.add(start);
+      while (stack.length) {
+        const cur = stack.pop()!;
+        comp.push(cur);
+        for (const n of out.get(cur) ?? []) {
+          if (!seen.has(n)) {
+            seen.add(n);
+            stack.push(n);
+          }
+        }
+      }
+      comps.push(comp);
+    }
+    if (comps.length <= 1) break;
+    comps.sort((a, b) => b.length - a.length);
+    const main = comps[0]!;
+    const small = comps[comps.length - 1]!;
+    let best: [string, string, number] | null = null;
+    for (const a of small) {
+      const ca = centers.get(a);
+      if (!ca) continue;
+      for (const b of main) {
+        const cb = centers.get(b);
+        if (!cb) continue;
+        const d = haversineKm(ca, cb);
+        if (!best || d < best[2]) best = [a, b, d];
+      }
+    }
+    if (!best) break;
+    out.get(best[0])!.add(best[1]);
+    out.get(best[1])!.add(best[0]);
+  }
+  return new Map([...out].map(([k, v]) => [k, [...v].sort()]));
+}
+
+/** 짝수-홀수 규칙 point-in-polygon. ring은 [x,y,x,y,...] */
+export function pointInRing(x: number, y: number, ring: readonly number[]): boolean {
+  let inside = false;
+  const n = ring.length / 2;
+  for (let i = 0, j = n - 1; i < n; j = i++) {
+    const xi = ring[2 * i]!;
+    const yi = ring[2 * i + 1]!;
+    const xj = ring[2 * j]!;
+    const yj = ring[2 * j + 1]!;
+    if (yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) inside = !inside;
+  }
+  return inside;
+}

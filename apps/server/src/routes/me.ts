@@ -2,6 +2,7 @@ import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import type { Db } from '../db.js';
 import { MIN_AGE, ageOn, isValidBirthDate } from '../domain/age.js';
+import { judgeRegionReport } from '../domain/region-report.js';
 import { toMeDto } from '../domain/me.js';
 import {
   NICKNAME_MESSAGES,
@@ -24,6 +25,11 @@ const Body = {
   }),
   nickname: z.object({ nickname: z.string().max(40) }),
   nickQuery: z.object({ nick: z.string().max(40) }),
+  region: z.object({
+    regionCode: z.string().regex(/^\d{5}$/, '지역 코드가 올바르지 않아요.'),
+    /** 기기가 감지한 가짜 위치(Android isMocked) */
+    mocked: z.boolean().default(false),
+  }),
 };
 
 /** 약관·생년월일·닉네임이 모두 채워지는 순간 가입 보너스와 기본 편지지를 한 번만 지급한다. */
@@ -131,5 +137,57 @@ export const meRoutes: FastifyPluginAsync<{ now: () => Date }> = async (app, { n
     }
     await completeOnboardingIfReady(app.db, req.userId);
     return me(req.userId);
+  });
+
+  /**
+   * 현재 지역 보고. 기기에서 시를 판정해 코드만 보낸다(SPEC 8).
+   * 가짜 위치·비현실적 이동은 기록만 하고 반영하지 않는다.
+   */
+  app.post('/me/region', async (req) => {
+    const { regionCode, mocked } = parse(Body.region, req.body);
+    const region = await app.db.region.findFirst({ where: { code: regionCode, active: true } });
+    if (!region) throw new AppError(400, 'UNKNOWN_REGION', '알 수 없는 지역이에요.');
+    const at = now();
+    const user = await app.db.user.findUniqueOrThrow({
+      where: { id: req.userId },
+      include: { lastRegion: true },
+    });
+    const reject = judgeRegionReport({
+      mocked,
+      last:
+        user.lastRegion && user.lastRegionReportedAt
+          ? { lon: user.lastRegion.lon, lat: user.lastRegion.lat, at: user.lastRegionReportedAt }
+          : null,
+      next: { lon: region.lon, lat: region.lat },
+      now: at,
+    });
+    await app.db.userRegionReport.create({
+      data: {
+        userId: req.userId,
+        regionCode,
+        reportedAt: at,
+        accepted: reject === null,
+        rejectReason: reject,
+      },
+    });
+    if (reject) {
+      return { accepted: false, reason: reject, regionCode: user.lastRegionCode };
+    }
+    await app.db.$transaction([
+      app.db.user.update({
+        where: { id: req.userId },
+        data: {
+          lastRegionCode: regionCode,
+          lastRegionReportedAt: at,
+          homeRegionCode: user.homeRegionCode ?? regionCode,
+        },
+      }),
+      app.db.regionVisit.upsert({
+        where: { userId_regionCode: { userId: req.userId, regionCode } },
+        create: { userId: req.userId, regionCode },
+        update: {},
+      }),
+    ]);
+    return { accepted: true, reason: null, regionCode };
   });
 };

@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
   addIslandNeighbors,
+  connectComponents,
+  pointInRing,
   displayName,
   haversineKm,
   neighborsFromTopology,
@@ -79,5 +81,36 @@ describe('roundRing', () => {
         [127.1, 37.1],
       ]),
     ).toEqual([127, 37, 127.1, 37.1]);
+  });
+});
+
+describe('connectComponents', () => {
+  it('떨어진 섬 덩어리를 가장 가까운 본토 지역과 잇는다', () => {
+    const n = connectComponents(
+      new Map([
+        ['A', ['B']],
+        ['B', ['A', 'C']],
+        ['C', ['B']],
+        ['J1', ['J2']],
+        ['J2', ['J1']],
+      ]),
+      new Map<string, readonly [number, number]>([
+        ['A', [127, 37]],
+        ['B', [127, 36]],
+        ['C', [126.5, 34.8]],
+        ['J1', [126.5, 33.5]],
+        ['J2', [126.5, 33.2]],
+      ]),
+    );
+    expect(n.get('J1')).toEqual(['C', 'J2']);
+    expect(n.get('C')).toEqual(['B', 'J1']);
+  });
+});
+
+describe('pointInRing', () => {
+  it('사각형 안팎을 구분한다', () => {
+    const sq = [0, 0, 10, 0, 10, 10, 0, 10];
+    expect(pointInRing(5, 5, sq)).toBe(true);
+    expect(pointInRing(15, 5, sq)).toBe(false);
   });
 });

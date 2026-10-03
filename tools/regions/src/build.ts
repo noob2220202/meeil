@@ -8,6 +8,8 @@ import { fileURLToPath } from 'node:url';
 import mapshaper from 'mapshaper';
 import {
   addIslandNeighbors,
+  connectComponents,
+  pointInRing,
   displayName,
   neighborsFromTopology,
   provinceShortName,
@@ -88,9 +90,10 @@ async function main() {
     ] ?? '{}',
   ) as { features: Feature[] };
   const centers = JSON.parse(
+    // TopoJSON 객체를 그대로 넣으면 양자화 변환이 적용되지 않아 좌표가 틀어진다 → GeoJSON으로
     (
       await run('-i in.json -points inner -o out.json format=geojson precision=0.0001', {
-        'in.json': topo,
+        'in.json': geo,
       })
     )['out.json'] ?? '{}',
   ) as { features: Feature[] };
@@ -101,8 +104,8 @@ async function main() {
     ]),
   );
 
-  const neighbors = addIslandNeighbors(
-    neighborsFromTopology(layer.geometries, 'code'),
+  const neighbors = connectComponents(
+    addIslandNeighbors(neighborsFromTopology(layer.geometries, 'code'), centerByCode),
     centerByCode,
   );
 
@@ -146,6 +149,16 @@ async function main() {
       };
     })
     .sort((a, b) => a.code.localeCompare(b.code));
+
+  // 대표점은 반드시 자기 지역(외곽 링 안, 구멍 밖)에 있어야 한다
+  for (const r of regions) {
+    const [x, y] = r.center;
+    const ok = r.polygons.some(
+      (poly) =>
+        pointInRing(x, y, poly[0] ?? []) && !poly.slice(1).some((h) => pointInRing(x, y, h)),
+    );
+    if (!ok) throw new Error(`대표점이 지역 밖에 있음: ${r.fullName}`);
+  }
 
   const provinceList = [...provinces.values()].sort((a, b) => a.code.localeCompare(b.code));
   const pointCount = regions.reduce(

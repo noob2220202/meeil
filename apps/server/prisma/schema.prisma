@@ -202,15 +202,23 @@ model Goat {
   @@map("goats")
 }
 
+enum TravelMode {
+  WALK
+  /// 배·비행기(섬 그룹 사이)
+  SEA
+}
+
 model GoatScheduleStop {
-  id         String   @id @default(uuid(7)) @db.Uuid
+  id         String     @id @default(uuid(7)) @db.Uuid
   goatId     String
   regionCode String
   seq        Int
   arriveAt   DateTime
   departAt   DateTime
   /// 72시간 하드캡 보장을 위한 특급 배달 정류
-  express    Boolean  @default(false)
+  express    Boolean    @default(false)
+  /// 이 정류에 오기까지의 이동 수단
+  travelMode TravelMode @default(WALK)
 
   goat   Goat   @relation(fields: [goatId], references: [id], onDelete: Cascade)
   region Region @relation(fields: [regionCode], references: [code])
