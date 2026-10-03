@@ -16,6 +16,9 @@ abstract final class Fonts {
   static const title = 'Jua';
   static const body = 'GowunDodum';
   static const handwriting = 'Gaegu';
+
+  /// Jua·Gaegu에 없는 글자(·, —, 일부 기호)는 본문 글꼴로 그린다
+  static const fallback = [body];
 }
 
 ThemeData buildTheme() {
@@ -26,7 +29,11 @@ ThemeData buildTheme() {
     primary: Palette.outline,
     onPrimary: Colors.white,
   );
-  const titleStyle = TextStyle(fontFamily: Fonts.title, color: Palette.textBrown);
+  const titleStyle = TextStyle(
+    fontFamily: Fonts.title,
+    fontFamilyFallback: Fonts.fallback,
+    color: Palette.textBrown,
+  );
   return ThemeData(
     useMaterial3: true,
     colorScheme: scheme,

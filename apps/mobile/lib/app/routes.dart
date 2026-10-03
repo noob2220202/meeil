@@ -45,6 +45,7 @@ String? resolveRedirect(SessionState session, AppFlags flags, String location) {
         Routes.nickname,
         Routes.permissions,
       };
+      // /compose, /letters/:id 등 로그인 뒤 화면은 그대로 둔다
       return preLogin.contains(location) ? Routes.home : null;
   }
 }

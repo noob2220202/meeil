@@ -91,6 +91,7 @@ MapBanner mapBanner({
       '우체부 염소가 왔어요!',
       '${namesIGa(here.map((g) => g.name).toList())} $place에 머무는 중이에요.',
       BannerTone.arrived,
+      action: '편지 맡기기',
       goatLook: here.first.look,
     );
   }

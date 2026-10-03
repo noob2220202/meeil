@@ -289,6 +289,7 @@ class OverlayPainter extends CustomPainter {
           text: text,
           style: TextStyle(
             fontFamily: Fonts.title,
+            fontFamilyFallback: Fonts.fallback,
             fontSize: fontSize,
             color: Palette.textBrown,
             shadows: const [
@@ -343,7 +344,12 @@ class OverlayPainter extends CustomPainter {
       () => TextPainter(
         text: const TextSpan(
           text: '나',
-          style: TextStyle(fontFamily: Fonts.title, fontSize: 12, color: Color(0xFFFFFFFF)),
+          style: TextStyle(
+            fontFamily: Fonts.title,
+            fontFamilyFallback: Fonts.fallback,
+            fontSize: 12,
+            color: Color(0xFFFFFFFF),
+          ),
         ),
         textDirection: TextDirection.ltr,
       )..layout(),

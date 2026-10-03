@@ -103,7 +103,13 @@ class SessionController extends Notifier<SessionState> {
     state = const SignedOut(underAge: true);
   }
 
+  /// 로그아웃 직전에 할 일(푸시 토큰 해제 등). 앱 계층에서 등록한다.
+  Future<void> Function()? beforeSignOut;
+
   Future<void> signOut() async {
+    try {
+      await beforeSignOut?.call();
+    } catch (_) {}
     final tokens = await _store.read();
     if (tokens != null) await _api.logout(tokens.refreshToken);
     await _store.clear();

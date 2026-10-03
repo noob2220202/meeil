@@ -111,6 +111,22 @@ class ApiClient {
     ),
   );
 
+  Future<Map<String, dynamic>> postForm(String path, FormData form) => _send(
+    () => dio.post<Map<String, dynamic>>(
+      path,
+      data: form,
+      options: Options(sendTimeout: const Duration(seconds: 60)),
+    ),
+  );
+
+  Future<void> delete(String path) async {
+    try {
+      await dio.delete<void>(path);
+    } on DioException catch (e) {
+      throw toApiException(e);
+    }
+  }
+
   Future<Map<String, dynamic>> put(String path, Object? body) =>
       _send(() => dio.put<Map<String, dynamic>>(path, data: body));
 

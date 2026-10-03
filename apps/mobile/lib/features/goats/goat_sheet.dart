@@ -185,7 +185,13 @@ class _GoatSheetState extends State<GoatSheet> {
         ],
         if (stops.isNotEmpty) ...[
           const SizedBox(height: 18),
-          Text('다음에 들를 곳', style: text.titleSmall?.copyWith(fontFamily: Fonts.title)),
+          Text(
+            '다음에 들를 곳',
+            style: text.titleSmall?.copyWith(
+              fontFamily: Fonts.title,
+              fontFamilyFallback: Fonts.fallback,
+            ),
+          ),
           const SizedBox(height: 8),
           for (final s in stops)
             Padding(

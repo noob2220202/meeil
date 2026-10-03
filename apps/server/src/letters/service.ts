@@ -1,5 +1,6 @@
 // 편지 맡기기·배달·보관함 (SPEC 3, 5)
 import type { Db } from '../db.js';
+import { iGa } from '../domain/korean.js';
 import { applyLedger } from '../domain/points.js';
 import { AppError } from '../errors.js';
 import type { LetterMode, Prisma, RandomScope } from '../generated/prisma/client.js';
@@ -38,7 +39,7 @@ const letterInclude = {
     select: { id: true, nickname: true, titleAchievement: { select: { titleText: true } } },
   },
   recipient: { select: { id: true, nickname: true } },
-  goat: { select: { id: true, name: true } },
+  goat: { select: { id: true, name: true, hatColor: true, bagColor: true } },
   photo: { select: { storageKey: true, width: true, height: true } },
 } satisfies Prisma.LetterInclude;
 
@@ -285,7 +286,7 @@ export class LetterService {
       await this.pusher
         .sendToUser(l.recipientId, {
           title: '편지가 도착했어요',
-          body: `${l.goat?.name ?? '우체부 염소'}가 ${l.sender.nickname ?? '누군가'}님의 편지를 가져왔어요.`,
+          body: `${iGa(l.goat?.name ?? '우체부 염소')} ${l.sender.nickname ?? '누군가'}님의 편지를 가져왔어요.`,
           data: { type: 'letter', letterId: l.id },
         })
         .catch(() => 0);
@@ -482,7 +483,9 @@ export class LetterService {
       randomScope: l.randomScope,
       originRegionCode: l.originRegionCode,
       destRegionCode: isSender ? l.destRegionCode : null,
-      goat: l.goat ? { id: l.goat.id, name: l.goat.name } : null,
+      goat: l.goat
+        ? { id: l.goat.id, name: l.goat.name, hatColor: l.goat.hatColor, bagColor: l.goat.bagColor }
+        : null,
       pickupGoatId: l.pickupGoatId,
       express: l.express,
       handedAt: l.handedAt.toISOString(),

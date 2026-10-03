@@ -157,6 +157,7 @@ class _ChunkyButtonState extends State<ChunkyButton> {
                                 widget.label,
                                 style: TextStyle(
                                   fontFamily: Fonts.title,
+                                  fontFamilyFallback: Fonts.fallback,
                                   fontSize: 18,
                                   color: widget.foreground,
                                 ),

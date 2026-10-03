@@ -176,6 +176,24 @@ importers:
         specifier: 8.71.0
         version: 8.71.0(eslint@9.39.5(jiti@2.7.0))(typescript@6.0.3)
 
+  tools/stickers:
+    devDependencies:
+      '@types/node':
+        specifier: 26.6.4
+        version: 26.6.4
+      eslint:
+        specifier: 9.39.5
+        version: 9.39.5(jiti@2.7.0)
+      tsx:
+        specifier: 4.23.15
+        version: 4.23.15
+      typescript:
+        specifier: 6.0.3
+        version: 6.0.3
+      typescript-eslint:
+        specifier: 8.71.0
+        version: 8.71.0(eslint@9.39.5(jiti@2.7.0))(typescript@6.0.3)
+
 packages:
 
   '@asamuzakjp/css-color@7.1.3':

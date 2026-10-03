@@ -16,6 +16,18 @@ abstract final class AppConfig {
   /// 개발용 로그인 버튼. 디버그 빌드에서만, 서버도 AUTH_DEV_LOGIN=true일 때만 동작.
   static const devLogin = kDebugMode && bool.fromEnvironment('DEV_LOGIN', defaultValue: true);
 
+  /// FCM(푸시). 넷 다 있어야 켜진다. 없으면 앱 안에서 1분마다 새 편지를 확인한다.
+  static const firebaseApiKey = String.fromEnvironment('FIREBASE_API_KEY');
+  static const firebaseAppId = String.fromEnvironment('FIREBASE_APP_ID');
+  static const firebaseSenderId = String.fromEnvironment('FIREBASE_SENDER_ID');
+  static const firebaseProjectId = String.fromEnvironment('FIREBASE_PROJECT_ID');
+
+  static bool get pushEnabled =>
+      firebaseApiKey.isNotEmpty &&
+      firebaseAppId.isNotEmpty &&
+      firebaseSenderId.isNotEmpty &&
+      firebaseProjectId.isNotEmpty;
+
   static bool get kakaoEnabled => kakaoNativeAppKey.isNotEmpty;
   static bool get googleEnabled => googleServerClientId.isNotEmpty;
 }

@@ -8,6 +8,11 @@ import 'package:meeil/features/auth/me.dart';
 import 'package:meeil/features/auth/session.dart';
 import 'package:meeil/features/auth/social_login.dart';
 import 'package:meeil/features/goats/goats_api.dart';
+import 'package:meeil/features/goats/hand_availability.dart';
+import 'package:flutter/painting.dart';
+import 'package:meeil/features/letters/letter_models.dart';
+import 'package:meeil/features/map/goat_painter.dart';
+import 'package:meeil/features/letters/letters_api.dart';
 import 'package:meeil/features/goats/schedule.dart';
 import 'package:meeil/features/location/my_region.dart';
 import 'package:meeil/features/onboarding/permissions_screen.dart';
@@ -167,6 +172,7 @@ Future<List<Override>> appOverrides({
   FakePermissions? permissions,
   LocationSource? location,
   RegionApi? regionApi,
+  FakeLettersApi? letters,
   bool scheduleFails = false,
 }) async {
   final prefs = await SharedPreferences.getInstance();
@@ -179,6 +185,7 @@ Future<List<Override>> appOverrides({
     // compute()·실제 파일 로딩은 가짜 시간에서 끝나지 않으므로 미리 파싱한 값을 쓴다
     regionDataProvider.overrideWith((ref) async => testRegionData),
     goatsApiProvider.overrideWithValue(FakeGoatsApi(store, fail: scheduleFails)),
+    lettersApiProvider.overrideWithValue(letters ?? FakeLettersApi(store)),
     regionApiProvider.overrideWithValue(regionApi ?? FakeRegionApi(store)),
     locationSourceProvider.overrideWithValue(
       location ?? FakeLocationSource(grant: LocationAccess.denied),
@@ -247,3 +254,132 @@ class FakeLocationSource implements LocationSource {
 
 /// 번들 지역 데이터(테스트에서 한 번만 파싱)
 final testRegionData = RegionData.parse(File(regionAssetPath).readAsStringSync());
+
+/// 메모리 편지함(서버 규칙 중 화면에 필요한 부분만)
+class FakeLettersApi extends LettersApi {
+  FakeLettersApi(MemoryTokenStore store)
+    : super(ApiClient(baseUrl: 'http://fake.invalid', tokenStore: store));
+
+  final inbox = <Letter>[];
+  final sent = <Letter>[];
+  final trashed = <Letter>[];
+  final handed = <HandRequest>[];
+  final users = <Person>[
+    const Person(id: 'u-dubu', nickname: '두부염소'),
+    const Person(id: 'u-kong', nickname: '콩이네', title: '단골 손님'),
+  ];
+  ApiException? handError;
+  int uploads = 0;
+
+  @override
+  Future<Letter> hand(HandRequest req) async {
+    if (handError != null) throw handError!;
+    handed.add(req);
+    final l = Letter(
+      id: 'sent-${sent.length + 1}',
+      mode: req.mode,
+      isSender: true,
+      status: LetterStatus.inTransit,
+      sender: const Person(id: 'me', nickname: '나'),
+      recipient: req.mode == LetterMode.random
+          ? null
+          : users.firstWhere((u) => u.id == req.recipientId, orElse: () => users.first),
+      body: req.body,
+      stationeryId: req.stationeryId,
+      stickers: req.stickers,
+      photo: null,
+      handedAt: fixtureNow,
+      etaAt: fixtureNow.add(const Duration(hours: 9, minutes: 20)),
+      goatId: 'merongi',
+      goatName: '메롱이',
+    );
+    sent.insert(0, l);
+    return l;
+  }
+
+  @override
+  Future<LetterPage> list(MailBox box, {String? cursor}) async => LetterPage(switch (box) {
+    MailBox.inbox => inbox,
+    MailBox.sent => sent,
+    MailBox.trash => trashed,
+  }, null);
+
+  @override
+  Future<int> unreadCount() async => inbox.where((l) => l.isUnread).length;
+
+  @override
+  Future<Letter> get(String id) async =>
+      [...inbox, ...sent, ...trashed].firstWhere((l) => l.id == id);
+
+  @override
+  Future<Letter> markRead(String id) async {
+    final i = inbox.indexWhere((l) => l.id == id);
+    final l = inbox[i];
+    final read = Letter(
+      id: l.id,
+      mode: l.mode,
+      isSender: false,
+      status: LetterStatus.read,
+      sender: l.sender,
+      recipient: l.recipient,
+      body: l.body,
+      stationeryId: l.stationeryId,
+      stickers: l.stickers,
+      photo: l.photo,
+      handedAt: l.handedAt,
+      deliveredAt: l.deliveredAt,
+      readAt: fixtureNow,
+      goatId: l.goatId,
+      goatName: l.goatName,
+      canReply: true,
+    );
+    inbox[i] = read;
+    return read;
+  }
+
+  @override
+  Future<List<Person>> searchUsers(String nick) async =>
+      users.where((u) => u.nickname.startsWith(nick)).toList();
+
+  @override
+  Future<String> uploadPhoto(String path) async {
+    uploads++;
+    return 'photo-$uploads';
+  }
+}
+
+/// 받은 편지 예시
+Letter sampleReceived({
+  String id = 'in-1',
+  bool unread = true,
+  String stationeryId = 'cream',
+  LetterMode mode = LetterMode.direct,
+  String body = '오늘 우리 동네에 메롱이가 왔어! 너한테도 염소가 놀러 가길 바라며 편지 보내.',
+}) => Letter(
+  id: id,
+  mode: mode,
+  isSender: false,
+  status: unread ? LetterStatus.delivered : LetterStatus.read,
+  sender: const Person(id: 'u-dubu', nickname: '두부염소', title: '단골 손님'),
+  recipient: const Person(id: 'me', nickname: '나'),
+  body: body,
+  stationeryId: stationeryId,
+  stickers: const [PlacedSticker('heart', 0.9, 0.05), PlacedSticker('goat-love', 0.05, 0.92)],
+  photo: null,
+  handedAt: fixtureNow.subtract(const Duration(hours: 20)),
+  deliveredAt: fixtureNow.subtract(const Duration(hours: 1)),
+  goatId: 'merongi',
+  goatName: '메롱이',
+  goatLook: const GoatLook(hat: Color(0xFFE8505B), bag: Color(0xFFF6C177)),
+  canReply: true,
+  originRegionCode: '11110',
+);
+
+/// 테스트용 고정 시계
+class FixedClock extends ClockTick {
+  FixedClock(this.at);
+  final DateTime at;
+
+  @override
+  DateTime build() => at;
+}

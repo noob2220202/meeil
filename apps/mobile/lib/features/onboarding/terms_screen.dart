@@ -129,6 +129,7 @@ class _CheckRow extends StatelessWidget {
                 style: TextStyle(
                   fontSize: bold ? 18 : 16,
                   fontFamily: bold ? Fonts.title : null,
+                  fontFamilyFallback: Fonts.fallback,
                   color: Palette.textBrown,
                 ),
               ),

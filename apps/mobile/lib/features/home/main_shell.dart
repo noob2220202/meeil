@@ -1,34 +1,52 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../app/push_provider.dart';
 import '../../app/theme.dart';
 import '../../ui/widgets.dart';
 import '../auth/session.dart';
+import '../letters/letters_api.dart';
+import '../letters/mailbox_providers.dart';
+import '../letters/mailbox_tab.dart';
 import '../map/map_tab.dart';
 
 /// 하단 탭: 지도 / 편지함 / 롤링 / 내 정보 (SPEC 10)
-class MainShell extends StatefulWidget {
-  const MainShell({super.key, this.initialTab = 0, this.mapClock});
+class MainShell extends ConsumerStatefulWidget {
+  const MainShell({super.key, this.initialTab = 0, this.initialBox = MailBox.inbox, this.mapClock});
 
   final int initialTab;
+  final MailBox initialBox;
   final DateTime Function()? mapClock;
 
   @override
-  State<MainShell> createState() => _MainShellState();
+  ConsumerState<MainShell> createState() => _MainShellState();
 }
 
-class _MainShellState extends State<MainShell> {
+class _MainShellState extends ConsumerState<MainShell> {
   late int _index = widget.initialTab;
 
   @override
+  void initState() {
+    super.initState();
+    // 가입을 마친 사용자만 여기 온다 → 푸시 등록
+    Future.microtask(() => ref.read(pushServiceProvider).start());
+  }
+
+  @override
+  void didUpdateWidget(MainShell old) {
+    super.didUpdateWidget(old);
+    // 편지를 맡긴 뒤 /?tab=1&box=sent 로 돌아오는 경우
+    if (old.initialTab != widget.initialTab || old.initialBox != widget.initialBox) {
+      _index = widget.initialTab;
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final unread = ref.watch(unreadCountProvider).value ?? 0;
     final tabs = [
       MapTab(clock: widget.mapClock),
-      const _ComingSoon(
-        illustration: Illustration.letter,
-        title: '편지함은 곧 열려요',
-        body: '염소가 배달한 편지와 내가 맡긴 편지를\n여기서 볼 수 있어요.',
-      ),
+      MailboxTab(initialBox: widget.initialBox),
       const _ComingSoon(
         illustration: Illustration.scroll,
         title: '롤링페이퍼는 곧 열려요',
@@ -48,7 +66,12 @@ class _MainShellState extends State<MainShell> {
           backgroundColor: Colors.white,
           indicatorColor: Palette.yellow,
           labelTextStyle: WidgetStateProperty.all(
-            const TextStyle(fontFamily: Fonts.title, fontSize: 13, color: Palette.textBrown),
+            const TextStyle(
+              fontFamily: Fonts.title,
+              fontFamilyFallback: Fonts.fallback,
+              fontSize: 13,
+              color: Palette.textBrown,
+            ),
           ),
           iconTheme: WidgetStateProperty.all(const IconThemeData(color: Palette.textBrown)),
         ),
@@ -57,14 +80,23 @@ class _MainShellState extends State<MainShell> {
             border: Border(top: BorderSide(color: Palette.outline, width: 2)),
           ),
           child: NavigationBar(
+            key: const ValueKey('main-nav'),
             selectedIndex: _index,
             height: 68,
             onDestinationSelected: (i) => setState(() => _index = i),
-            destinations: const [
-              NavigationDestination(icon: Icon(Icons.map_rounded), label: '지도'),
-              NavigationDestination(icon: Icon(Icons.mail_rounded), label: '편지함'),
-              NavigationDestination(icon: Icon(Icons.history_edu_rounded), label: '롤링'),
-              NavigationDestination(icon: Icon(Icons.person_rounded), label: '내 정보'),
+            destinations: [
+              const NavigationDestination(icon: Icon(Icons.map_rounded), label: '지도'),
+              NavigationDestination(
+                icon: Badge(
+                  isLabelVisible: unread > 0,
+                  label: Text('$unread'),
+                  backgroundColor: const Color(0xFFFF8FAB),
+                  child: const Icon(Icons.mail_rounded),
+                ),
+                label: '편지함',
+              ),
+              const NavigationDestination(icon: Icon(Icons.history_edu_rounded), label: '롤링'),
+              const NavigationDestination(icon: Icon(Icons.person_rounded), label: '내 정보'),
             ],
           ),
         ),
@@ -141,7 +173,11 @@ class ProfileTab extends ConsumerWidget {
                     const Spacer(),
                     Text(
                       '${me.pointsBalance}P',
-                      style: const TextStyle(fontFamily: Fonts.title, fontSize: 22),
+                      style: const TextStyle(
+                        fontFamily: Fonts.title,
+                        fontFamilyFallback: Fonts.fallback,
+                        fontSize: 22,
+                      ),
                     ),
                   ],
                 ),

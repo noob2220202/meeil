@@ -118,7 +118,12 @@ class _NicknameScreenState extends ConsumerState<NicknameScreen> {
             maxLength: nicknameMax,
             textInputAction: TextInputAction.done,
             onSubmitted: (_) => canSubmit ? _submit() : null,
-            style: const TextStyle(fontFamily: Fonts.title, fontSize: 22, color: Palette.textBrown),
+            style: const TextStyle(
+              fontFamily: Fonts.title,
+              fontFamilyFallback: Fonts.fallback,
+              fontSize: 22,
+              color: Palette.textBrown,
+            ),
             decoration: InputDecoration(
               hintText: '예) 뽀얀염소',
               filled: true,

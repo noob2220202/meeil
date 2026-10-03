@@ -124,7 +124,14 @@ class _PermissionCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: const TextStyle(fontFamily: Fonts.title, fontSize: 18)),
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontFamily: Fonts.title,
+                    fontFamilyFallback: Fonts.fallback,
+                    fontSize: 18,
+                  ),
+                ),
                 const SizedBox(height: 4),
                 Text(body, style: const TextStyle(height: 1.5)),
               ],

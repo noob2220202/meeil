@@ -506,6 +506,21 @@ describe('사진', () => {
   });
 });
 
+describe('편지지', () => {
+  it('가입하면 크림만 가지고 있다', async () => {
+    const r = (await db.region.findFirstOrThrow()).code;
+    const a = await makeUser('편지지확인', r);
+    const res = (await a.get('/stationery')).json<{
+      stationery: { id: string; owned: boolean }[];
+    }>();
+    expect(res.stationery.map((s) => [s.id, s.owned])).toEqual([
+      ['cream', true],
+      ['lined', false],
+      ['sky-cloud', false],
+    ]);
+  });
+});
+
 describe('닉네임 검색', () => {
   it('정확히 일치를 먼저, 그다음 앞부분 일치. 나는 빼고, 비공개 정보는 없다', async () => {
     const r = (await db.region.findFirstOrThrow()).code;

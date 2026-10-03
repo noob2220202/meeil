@@ -40,6 +40,26 @@ export const userRoutes: FastifyPluginAsync = async (app) => {
     return { query: normalizeNickname(nick), users };
   });
 
+  // 편지지 목록과 내가 가진 것(SPEC 7.2)
+  app.get('/stationery', async (req) => {
+    const [all, mine] = await Promise.all([
+      app.db.stationery.findMany({ orderBy: { sortOrder: 'asc' } }),
+      app.db.userStationery.findMany({
+        where: { userId: req.userId },
+        select: { stationeryId: true },
+      }),
+    ]);
+    const owned = new Set(mine.map((m) => m.stationeryId));
+    return {
+      stationery: all.map((s) => ({
+        id: s.id,
+        name: s.name,
+        unlockHint: s.unlockHint,
+        owned: owned.has(s.id),
+      })),
+    };
+  });
+
   // 푸시 토큰 등록/해제(기기 하나에 토큰 하나, 계정을 바꾸면 소유자가 바뀐다)
   app.put('/me/fcm-token', async (req, reply) => {
     const { token } = parse(TokenBody, req.body);

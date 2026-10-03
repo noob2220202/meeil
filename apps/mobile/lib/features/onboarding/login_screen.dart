@@ -140,6 +140,7 @@ class _GoogleMark extends StatelessWidget {
       'G',
       style: TextStyle(
         fontFamily: Fonts.title,
+        fontFamilyFallback: Fonts.fallback,
         fontSize: 22,
         color: Color(0xFF4285F4),
         fontWeight: FontWeight.bold,

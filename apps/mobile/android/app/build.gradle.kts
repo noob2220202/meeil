@@ -27,6 +27,8 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
+        // flutter_local_notifications(알림 예약 시각 처리)가 java.time 백포트를 요구한다
+        isCoreLibraryDesugaringEnabled = true
     }
 
     defaultConfig {
@@ -63,4 +65,8 @@ kotlin {
 
 flutter {
     source = "../.."
+}
+
+dependencies {
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")
 }

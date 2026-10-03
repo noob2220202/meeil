@@ -5,6 +5,10 @@ import 'package:go_router/go_router.dart';
 import '../core/app_flags.dart';
 import '../features/auth/session.dart';
 import '../features/home/main_shell.dart';
+import '../features/letters/compose_screen.dart';
+import '../features/letters/letter_models.dart';
+import '../features/letters/letter_screen.dart';
+import '../features/letters/letters_api.dart';
 import '../features/onboarding/birth_screen.dart';
 import '../features/onboarding/doc_screen.dart';
 import '../features/onboarding/intro_screen.dart';
@@ -44,7 +48,21 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/docs/:id',
         builder: (_, state) => DocScreen(docId: state.pathParameters['id']!),
       ),
-      GoRoute(path: Routes.home, builder: (_, _) => const MainShell()),
+      GoRoute(
+        path: Routes.home,
+        builder: (_, state) => MainShell(
+          initialTab: int.tryParse(state.uri.queryParameters['tab'] ?? '') ?? 0,
+          initialBox: state.uri.queryParameters['box'] == 'sent' ? MailBox.sent : MailBox.inbox,
+        ),
+      ),
+      GoRoute(path: '/compose', builder: (_, _) => const ComposeScreen()),
+      GoRoute(
+        path: '/letters/:id',
+        builder: (_, state) => LetterScreen(
+          id: state.pathParameters['id']!,
+          initial: state.extra is Letter ? state.extra! as Letter : null,
+        ),
+      ),
     ],
   );
 });

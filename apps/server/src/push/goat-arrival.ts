@@ -1,6 +1,7 @@
 // "우체부 염소가 우리 동네에 왔어요" 알림. 염소가 머무는 시간이 짧으므로(평균 하루 1시간 남짓)
 // 편지를 맡길 기회를 놓치지 않게 알려 준다(docs/DECISIONS.md M2 리스크 대응).
 import type { Db } from '../db.js';
+import { iGa } from '../domain/korean.js';
 import type { Pusher } from './push.js';
 
 /** 한 사람에게 이 간격보다 자주 보내지 않는다 */
@@ -57,7 +58,7 @@ export async function notifyGoatArrivals(
       await pusher
         .sendToUser(u.id, {
           title: '우체부 염소가 왔어요!',
-          body: `${stop.goat.name}가 ${stop.region.name}에 도착했어요. 약 ${minutes}분 머무는 동안 편지를 맡겨 보세요.`,
+          body: `${iGa(stop.goat.name)} ${stop.region.name}에 도착했어요. 약 ${minutes}분 머무는 동안 편지를 맡겨 보세요.`,
           data: { type: 'goat', goatId: stop.goatId, regionCode: stop.regionCode },
         })
         .catch(() => 0);

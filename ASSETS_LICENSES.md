@@ -13,9 +13,12 @@
 
 ## 직접 제작한 자산
 
-| 자산                                           | 원본                                       | 번들                                |
-| ---------------------------------------------- | ------------------------------------------ | ----------------------------------- |
-| 우체부 염소 얼굴, 편지 봉투, 두루마리 일러스트 | `assets-src/svg/*.svg` (손으로 작성한 SVG) | `apps/mobile/assets/illustrations/` |
+| 자산                                           | 원본                                                              | 번들                                |
+| ---------------------------------------------- | ----------------------------------------------------------------- | ----------------------------------- |
+| 우체부 염소 얼굴, 편지 봉투, 두루마리 일러스트 | `assets-src/svg/*.svg` (손으로 작성한 SVG)                        | `apps/mobile/assets/illustrations/` |
+| 스티커 20종                                    | `tools/stickers/src/build.ts`가 생성 → `assets-src/svg/stickers/` | `apps/mobile/assets/stickers/`      |
+| 염소 캐릭터(지도·연출)                         | 코드로 그림 `apps/mobile/lib/features/map/goat_painter.dart`      | —                                   |
+| 편지지 3종                                     | 코드로 그림 `apps/mobile/lib/features/letters/letter_paper.dart`  | —                                   |
 
 ## 경계 데이터 출처 표기 (앱 내 "오픈소스 라이선스" 화면에도 표시)
 

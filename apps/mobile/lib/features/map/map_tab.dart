@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../app/theme.dart';
 import '../../core/korean.dart';
@@ -116,7 +117,9 @@ class _MapTabState extends ConsumerState<MapTab> {
             children: [
               _BannerCard(
                 banner: banner,
-                onAction: () => ref.read(myRegionProvider.notifier).requestAndRefresh(),
+                onAction: banner.tone == BannerTone.arrived
+                    ? () => context.push('/compose')
+                    : () => ref.read(myRegionProvider.notifier).requestAndRefresh(),
               ),
               if (scheduleAsync.hasError && schedule == null) ...[
                 const SizedBox(height: 8),
@@ -201,7 +204,14 @@ class _BannerCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(banner.title, style: const TextStyle(fontFamily: Fonts.title, fontSize: 18)),
+                  Text(
+                    banner.title,
+                    style: const TextStyle(
+                      fontFamily: Fonts.title,
+                      fontFamilyFallback: Fonts.fallback,
+                      fontSize: 18,
+                    ),
+                  ),
                   if (banner.subtitle != null) ...[
                     const SizedBox(height: 2),
                     Text(banner.subtitle!, style: const TextStyle(fontSize: 13.5, height: 1.35)),
@@ -315,7 +325,11 @@ class _RegionCard extends StatelessWidget {
                   children: [
                     Text(
                       region.fullName,
-                      style: const TextStyle(fontFamily: Fonts.title, fontSize: 20),
+                      style: const TextStyle(
+                        fontFamily: Fonts.title,
+                        fontFamilyFallback: Fonts.fallback,
+                        fontSize: 20,
+                      ),
                     ),
                     if (mine) ...[
                       const SizedBox(width: 8),

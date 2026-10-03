@@ -52,9 +52,10 @@ docs/         DECISIONS.md, 개인정보처리방침/약관 초안, 스토어 �
 - 전체 점검(lint·타입·테스트·포맷): `pnpm lint && pnpm typecheck && pnpm test && pnpm format:check`
 - 관리자 웹: `pnpm --filter @meeil/admin dev` (http://localhost:5173/admin/)
 - 지역 데이터 재생성: `pnpm --filter @meeil/tools-regions build:regions`
+- 스티커 SVG 재생성: `pnpm --filter @meeil/tools-stickers build:stickers`
 - 스케줄 시뮬레이터: `pnpm --filter @meeil/tools-schedule-sim sim [--days 30] [--start 2026-10-01]` (CI에서도 실행, 제약 위반 시 실패. 같은 검증이 서버 테스트 `src/schedule/schedule.sim.test.ts`에도 있다)
 - 앱 스케줄 픽스처 갱신: `pnpm --filter @meeil/tools-schedule-sim fixture ../../apps/mobile/test/fixtures/schedule_20261003_1200kst.json`
-- 앱 실행(Galaxy): `cd apps/mobile && flutter run --dart-define=API_BASE_URL=http://<PC LAN IP>:3000` (USB 디버깅 연결. 소셜 키는 `docs/SOCIAL_LOGIN.md`)
+- 앱 실행(Galaxy): `cd apps/mobile && flutter run --dart-define=API_BASE_URL=http://<PC LAN IP>:3000` (USB 디버깅 연결. 소셜 키는 `docs/SOCIAL_LOGIN.md`, 푸시·R2는 `docs/PUSH_AND_STORAGE.md`)
 - 앱 테스트: `cd apps/mobile && flutter analyze && flutter test --exclude-tags screenshot`
 - 앱 스크린샷(Galaxy 해상도): `cd apps/mobile && flutter test --tags screenshot` → `build/screenshots/`
 - 디버그 APK: `cd apps/mobile && flutter build apk --debug`
