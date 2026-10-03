@@ -197,54 +197,57 @@ class _MapViewState extends State<MapView> with TickerProviderStateMixin {
           _fitZoom = fit.getMaxScaleOnAxis();
           if (first) _tc.value = fit;
         }
-        return GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTapUp: (d) => _onTap(d.localPosition),
-          child: Stack(
-            children: [
-              const Positioned.fill(child: ColoredBox(color: seaColor)),
-              InteractiveViewer(
-                transformationController: _tc,
-                constrained: false,
-                minScale: _fitZoom * 0.8,
-                maxScale: _fitZoom * 14,
-                boundaryMargin: EdgeInsets.all(math.max(size.width, size.height) * 0.6),
-                child: ValueListenableBuilder<Matrix4>(
-                  valueListenable: _tc,
-                  builder: (context, m, _) => RepaintBoundary(
-                    child: CustomPaint(
-                      size: geo.bounds.size,
-                      isComplex: true,
-                      painter: LandPainter(
-                        geo: geo,
-                        zoom: m.getMaxScaleOnAxis(),
-                        myRegion: widget.myRegion,
-                        selectedRegion: widget.selectedRegion,
+        return Semantics(
+          label: '대한민국 염소 지도. 두 손가락으로 확대하고, 시나 염소를 눌러 자세히 봐요.',
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTapUp: (d) => _onTap(d.localPosition),
+            child: Stack(
+              children: [
+                const Positioned.fill(child: ColoredBox(color: seaColor)),
+                InteractiveViewer(
+                  transformationController: _tc,
+                  constrained: false,
+                  minScale: _fitZoom * 0.8,
+                  maxScale: _fitZoom * 14,
+                  boundaryMargin: EdgeInsets.all(math.max(size.width, size.height) * 0.6),
+                  child: ValueListenableBuilder<Matrix4>(
+                    valueListenable: _tc,
+                    builder: (context, m, _) => RepaintBoundary(
+                      child: CustomPaint(
+                        size: geo.bounds.size,
+                        isComplex: true,
+                        painter: LandPainter(
+                          geo: geo,
+                          zoom: m.getMaxScaleOnAxis(),
+                          myRegion: widget.myRegion,
+                          selectedRegion: widget.selectedRegion,
+                        ),
                       ),
                     ),
                   ),
                 ),
-              ),
-              Positioned.fill(
-                child: IgnorePointer(
-                  child: RepaintBoundary(
-                    child: CustomPaint(
-                      painter: OverlayPainter(
-                        repaint: Listenable.merge([_frame, _tc]),
-                        geo: geo,
-                        matrixOf: () => _tc.value,
-                        fitZoom: _fitZoom,
-                        time: () => _t,
-                        sprites: _sprites,
-                        myRegion: widget.myRegion,
-                        goatSizeOf: () => _goatSize,
-                        highlightGoat: widget.selectedGoat,
+                Positioned.fill(
+                  child: IgnorePointer(
+                    child: RepaintBoundary(
+                      child: CustomPaint(
+                        painter: OverlayPainter(
+                          repaint: Listenable.merge([_frame, _tc]),
+                          geo: geo,
+                          matrixOf: () => _tc.value,
+                          fitZoom: _fitZoom,
+                          time: () => _t,
+                          sprites: _sprites,
+                          myRegion: widget.myRegion,
+                          goatSizeOf: () => _goatSize,
+                          highlightGoat: widget.selectedGoat,
+                        ),
                       ),
                     ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         );
       },

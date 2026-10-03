@@ -113,12 +113,14 @@ class _BoxTab extends StatelessWidget {
     button: true,
     selected: selected,
     label: badge > 0 ? '$label, 안 읽은 편지 $badge통' : label,
+    excludeSemantics: true,
     child: GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 150),
         margin: const EdgeInsets.symmetric(horizontal: 4),
-        padding: const EdgeInsets.symmetric(vertical: 10),
+        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
+        constraints: const BoxConstraints(minHeight: 48),
         decoration: BoxDecoration(
           color: selected ? Palette.yellow : Colors.white,
           borderRadius: BorderRadius.circular(14),
@@ -127,12 +129,17 @@ class _BoxTab extends StatelessWidget {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text(
-              label,
-              style: const TextStyle(
-                fontFamily: Fonts.title,
-                fontFamilyFallback: Fonts.fallback,
-                fontSize: 15,
+            Flexible(
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  label,
+                  style: const TextStyle(
+                    fontFamily: Fonts.title,
+                    fontFamilyFallback: Fonts.fallback,
+                    fontSize: 15,
+                  ),
+                ),
               ),
             ),
             if (badge > 0) ...[

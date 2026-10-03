@@ -126,6 +126,7 @@ class GoatPainterKit {
     bool faceLeft = false,
     double phase = 0,
     double highlight = 0,
+    double chew = 0,
   }) {
     final time = t + phase;
     final scale = size / _box;
@@ -138,8 +139,13 @@ class GoatPainterKit {
     final breathe = walking ? 1.0 : 1 + 0.025 * math.sin(2 * math.pi * time / 2.4);
     final legSwing = walking ? 0.45 * math.sin(w) : 0.0;
     final earFlap = walking ? 0.35 * math.sin(w + 1.2) : 0.12 * math.sin(2 * math.pi * time / 3.1);
+    // 하품: 쉬고 있을 때 약 11초마다 1.2초(입을 크게 벌리고 눈을 감는다)
+    final yc = time % 11.0;
+    final yawn = !walking && chew == 0 && yc > 9.8 ? math.sin(math.pi * (yc - 9.8) / 1.2) : 0.0;
     // 깜빡임: 약 3.7초마다 0.13초
-    final blink = (time % 3.7) < 0.13;
+    final blink = (time % 3.7) < 0.13 || yawn > 0.3;
+    // 오물오물: 초당 약 4번 씹기
+    final munch = chew > 0 ? (0.5 + 0.5 * math.sin(2 * math.pi * 4 * time)) * chew : 0.0;
 
     // 그림자
     _fill.color = const Color(0x2A5A4636);
@@ -227,6 +233,22 @@ class GoatPainterKit {
     _fill.color = _blush;
     canvas.drawOval(Rect.fromCenter(center: const Offset(73, 54), width: 10, height: 6), _fill);
     canvas.drawOval(Rect.fromCenter(center: const Offset(100, 53), width: 9, height: 6), _fill);
+    if (chew > 0) {
+      // 볼 빵빵: 볼이 부풀었다 줄었다
+      final r = 6.5 + 2.5 * munch;
+      _fill.color = _white;
+      canvas.drawCircle(Offset(100 + munch, 57), r, _fill);
+      canvas.drawCircle(
+        Offset(100 + munch, 57),
+        r,
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 2.4
+          ..color = _outline,
+      );
+      _fill.color = _blush;
+      canvas.drawOval(Rect.fromCenter(center: Offset(101 + munch, 56), width: 8, height: 5), _fill);
+    }
     if (blink) {
       final p = Paint()
         ..style = PaintingStyle.stroke
@@ -254,13 +276,33 @@ class GoatPainterKit {
       ..strokeWidth = 2.6
       ..strokeCap = StrokeCap.round
       ..color = _outline;
-    canvas.drawPath(
-      Path()
-        ..moveTo(83, 58)
-        ..quadraticBezierTo(86, 62, 88, 58.5)
-        ..quadraticBezierTo(90, 62, 93, 58),
-      mouth,
-    );
+    if (yawn > 0.05) {
+      // 하~암: 동그랗게 벌린 입
+      final o = Rect.fromCenter(
+        center: const Offset(88, 60),
+        width: 6 + 3 * yawn,
+        height: 3 + 7 * yawn,
+      );
+      _fill.color = const Color(0xFF8C4A4A);
+      canvas.drawOval(o, _fill);
+      canvas.drawOval(o, mouth);
+    } else if (chew > 0) {
+      // 오물오물: 입이 옆으로 씰룩
+      canvas.drawPath(
+        Path()
+          ..moveTo(84, 59 + munch)
+          ..quadraticBezierTo(88, 61.5 - munch, 92, 59 + munch),
+        mouth,
+      );
+    } else {
+      canvas.drawPath(
+        Path()
+          ..moveTo(83, 58)
+          ..quadraticBezierTo(86, 62, 88, 58.5)
+          ..quadraticBezierTo(90, 62, 93, 58),
+        mouth,
+      );
+    }
 
     // 우체부 모자
     canvas.save();

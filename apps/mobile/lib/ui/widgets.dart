@@ -153,13 +153,19 @@ class _ChunkyButtonState extends State<ChunkyButton> {
                                 widget.leading!,
                                 const SizedBox(width: 10),
                               ],
-                              Text(
-                                widget.label,
-                                style: TextStyle(
-                                  fontFamily: Fonts.title,
-                                  fontFamilyFallback: Fonts.fallback,
-                                  fontSize: 18,
-                                  color: widget.foreground,
+                              // 큰 글씨 설정에서도 버튼 높이 안에 들어오게 줄여 맞춘다
+                              Flexible(
+                                child: FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  child: Text(
+                                    widget.label,
+                                    style: TextStyle(
+                                      fontFamily: Fonts.title,
+                                      fontFamilyFallback: Fonts.fallback,
+                                      fontSize: 18,
+                                      color: widget.foreground,
+                                    ),
+                                  ),
                                 ),
                               ),
                             ],

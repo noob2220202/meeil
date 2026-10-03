@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import '../../app/theme.dart';
+import '../../core/sound.dart';
 import '../map/goat_painter.dart';
 
 /// 염소가 편지를 냠냠 먹어버리는 연출 (SPEC 9.3). 한 번 재생하고 마지막 장면에서 멈춘다.
@@ -36,6 +37,7 @@ class _GoatEatingSceneState extends State<GoatEatingScene> with SingleTickerProv
       _c.value = 1;
     } else {
       _c.forward();
+      playSfxIn(context, Sfx.chomp);
     }
   }
 
@@ -84,6 +86,8 @@ class GoatEatingPainter extends CustomPainter {
       look: look,
       t: p * 2.6,
       pose: GoatPose.idle,
+      // 먹는 동안 볼 빵빵 + 오물오물(SPEC 12.2)
+      chew: eating ? 1 : 0,
     );
     final mouth = feet + Offset((88 - 60) * scale, (60 - 104) * scale + chomp);
 

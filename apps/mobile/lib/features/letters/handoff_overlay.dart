@@ -2,6 +2,8 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import '../../core/sound.dart';
+
 import '../../app/theme.dart';
 import '../goats/schedule.dart';
 import '../map/goat_painter.dart';
@@ -45,6 +47,7 @@ class _HandoffState extends State<_Handoff> with SingleTickerProviderStateMixin 
       _c.value = 0.5;
     } else if (!_c.isAnimating && _c.value == 0) {
       _c.forward();
+      playSfxIn(context, Sfx.bleatShort);
     }
   }
 

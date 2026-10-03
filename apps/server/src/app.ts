@@ -27,6 +27,7 @@ import { adminRoutes } from './admin/routes.js';
 import { EatService } from './moderation/eat.js';
 import { ReportService } from './moderation/reports.js';
 import { safetyRoutes } from './routes/safety.js';
+import { clientErrorRoutes } from './routes/client-errors.js';
 import { rewardRoutes } from './routes/rewards.js';
 import { AchievementService } from './rewards/achievements.js';
 import { AdRewardService, GoogleAdKeys, type AdKeySource } from './rewards/ads.js';
@@ -143,6 +144,7 @@ export async function buildApp({
 
   await app.register(authPlugin, { tokens: new TokenService(db, env.JWT_SECRET, now) });
   await app.register(healthRoutes);
+  await app.register(clientErrorRoutes, { rateLimit: rateLimitEnabled });
   await app.register(regionRoutes);
   await app.register(authRoutes, {
     social:

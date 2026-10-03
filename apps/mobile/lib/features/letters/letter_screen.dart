@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 import '../../app/theme.dart';
 import '../../core/api_client.dart';
 import '../../core/korean.dart';
+import '../../core/sound.dart';
 import '../../data/regions.dart';
 import '../../ui/widgets.dart';
 import '../goats/goats_api.dart';
@@ -606,6 +607,14 @@ class _ArrivalSceneState extends State<ArrivalScene> with SingleTickerProviderSt
       WidgetsBinding.instance.addPostFrameCallback((_) => widget.onDone());
     } else if (!_c.isAnimating && _c.value == 0) {
       _c.forward();
+      playSfxIn(context, Sfx.bleat);
+      var opened = false;
+      _c.addListener(() {
+        if (!opened && _c.value >= 0.64) {
+          opened = true;
+          if (mounted) playSfxIn(context, Sfx.letterOpen);
+        }
+      });
     }
   }
 

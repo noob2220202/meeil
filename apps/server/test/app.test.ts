@@ -90,3 +90,20 @@ describe('시드 데이터', () => {
     expect(all.filter((s) => s.isDefault).map((s) => s.id)).toEqual(['cream']);
   });
 });
+
+describe('POST /client-errors', () => {
+  it('앱 오류 요약을 받고(로그만), 형식이 틀리면 400', async () => {
+    const ok = await app.inject({
+      method: 'POST',
+      url: '/client-errors',
+      payload: { message: 'StateError: x', stack: '#0 main', platform: 'android', mode: 'release' },
+    });
+    expect(ok.statusCode).toBe(202);
+    const bad = await app.inject({
+      method: 'POST',
+      url: '/client-errors',
+      payload: { message: 'x'.repeat(501), platform: 'android', mode: 'release' },
+    });
+    expect(bad.statusCode).toBe(400);
+  });
+});

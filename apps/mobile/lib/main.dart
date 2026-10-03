@@ -4,10 +4,12 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'app/app.dart';
 import 'core/app_flags.dart';
+import 'core/crash_guard.dart';
 import 'features/auth/social_login.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  CrashGuard().install();
   SdkSocialLogin.initKakao();
   final prefs = await SharedPreferences.getInstance();
   runApp(

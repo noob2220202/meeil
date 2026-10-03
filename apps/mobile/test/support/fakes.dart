@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:meeil/core/api_client.dart';
 import 'package:meeil/core/app_flags.dart';
+import 'package:meeil/core/sound.dart';
 import 'package:meeil/core/token_store.dart';
 import 'package:meeil/data/regions.dart';
 import 'package:meeil/features/auth/auth_api.dart';
@@ -206,6 +207,7 @@ Future<List<Override>> appOverrides({
   FakeRewardsApi? rewards,
   FakeAdGateway? ads,
   FakeSafetyApi? safety,
+  FakeSoundPlayer? sounds,
   bool scheduleFails = false,
 }) async {
   final prefs = await SharedPreferences.getInstance();
@@ -222,6 +224,7 @@ Future<List<Override>> appOverrides({
     rollingApiProvider.overrideWithValue(rolling ?? FakeRollingApi(store)),
     rewardsApiProvider.overrideWithValue(rewards ?? FakeRewardsApi(backend, store)),
     adGatewayProvider.overrideWithValue(ads ?? FakeAdGateway()),
+    soundPlayerProvider.overrideWithValue(sounds ?? FakeSoundPlayer()),
     safetyApiProvider.overrideWithValue(safety ?? FakeSafetyApi(store, backend: backend)),
     stationeryProvider.overrideWith(
       (ref) async => (rewards ?? FakeRewardsApi(backend, store)).stationery(),
@@ -763,4 +766,12 @@ class FakeSafetyApi extends SafetyApi {
 
   @override
   Future<List<Notice>> notices() async => List.of(notices_);
+}
+
+/// 효과음 기록만
+class FakeSoundPlayer implements SoundPlayer {
+  final played = <Sfx>[];
+
+  @override
+  Future<void> play(Sfx sfx) async => played.add(sfx);
 }

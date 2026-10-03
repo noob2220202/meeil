@@ -154,7 +154,7 @@ class LandPainter extends CustomPainter {
   @override
   bool shouldRepaint(LandPainter old) =>
       old.geo != geo ||
-      (old.zoom - zoom).abs() > zoom * 0.02 ||
+      (old.zoom - zoom).abs() > zoom * 0.06 ||
       old.myRegion != myRegion ||
       old.selectedRegion != selectedRegion;
 }

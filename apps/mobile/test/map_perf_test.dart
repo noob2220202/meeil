@@ -2,6 +2,7 @@ import 'dart:ui';
 
 import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:meeil/features/goats/schedule.dart';
 import 'package:meeil/features/map/goat_scene.dart';
 import 'package:meeil/features/map/map_geometry.dart';
 import 'package:meeil/features/map/map_painters.dart';
@@ -14,7 +15,13 @@ void main() {
   final geo = MapGeometry.build(testRegionData);
   final schedule = loadScheduleFixture();
 
-  double measure({required double relZoom, required Rect visible, int frames = 120}) {
+  double measure({
+    required double relZoom,
+    required Rect visible,
+    int frames = 120,
+    GoatSchedule? schedule,
+  }) {
+    final sched = schedule ?? loadScheduleFixture();
     const size = Size(412, 860);
     final fit = 412 / geo.bounds.width;
     final zoom = fit * relZoom;
@@ -33,7 +40,7 @@ void main() {
         time: () => t,
         sprites: () => buildGoatSprites(
           geo: geo,
-          schedule: schedule,
+          schedule: sched,
           now: fixtureNow.add(Duration(milliseconds: (t * 1000).round())),
           t: t,
           relZoom: relZoom,
@@ -79,6 +86,54 @@ void main() {
     // ignore: avoid_print
     print('확대 보기 프레임당 ${ms.toStringAsFixed(2)}ms (디버그 JIT)');
     expect(ms, lessThan(8));
+  });
+
+  test('스트레스: 염소 두 배(전국 58마리 이상)도 예산 안', () {
+    // 실제보다 많은 염소: 모든 일정을 30분 늦춘 복제본을 더한다
+    final doubled = GoatSchedule(
+      tracks: {
+        ...schedule.tracks,
+        for (final e in schedule.tracks.entries)
+          '${e.key}-copy': GoatTrack(
+            GoatInfo(
+              id: '${e.value.goat.id}-copy',
+              kind: e.value.goat.kind,
+              name: e.value.goat.name,
+              speedKmh: e.value.goat.speedKmh,
+              look: e.value.goat.look,
+              scopeCode: e.value.goat.scopeCode,
+            ),
+            [
+              for (final st in e.value.stops)
+                GoatStop(
+                  regionCode: st.regionCode,
+                  arriveAt: st.arriveAt.add(const Duration(minutes: 30)),
+                  departAt: st.departAt.add(const Duration(minutes: 30)),
+                  bySea: st.bySea,
+                ),
+            ],
+          ),
+      },
+      clockOffset: Duration.zero,
+      validUntil: schedule.validUntil,
+      cityGoatLook: schedule.cityGoatLook,
+    );
+    final sprites = buildGoatSprites(
+      geo: geo,
+      schedule: doubled,
+      now: fixtureNow,
+      t: 0,
+      relZoom: 1,
+      visibleWorld: geo.bounds,
+      goatSize: 40,
+    );
+    // ignore: avoid_print
+    print('스트레스 전국 염소 ${sprites.length}마리');
+    expect(sprites.length, greaterThanOrEqualTo(50));
+    final ms = measure(relZoom: 1, visible: geo.bounds, schedule: doubled);
+    // ignore: avoid_print
+    print('스트레스 프레임당 ${ms.toStringAsFixed(2)}ms (디버그 JIT)');
+    expect(ms, lessThan(10));
   });
 
   test('땅 레이어(확대 배율이 바뀔 때만 다시 그림)', () {

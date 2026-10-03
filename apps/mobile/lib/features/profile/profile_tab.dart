@@ -134,7 +134,13 @@ class _TitleChip extends StatelessWidget {
           children: [
             const Icon(Icons.workspace_premium_rounded, size: 16, color: Palette.textBrown),
             const SizedBox(width: 4),
-            Text(title ?? '칭호를 골라 보세요', style: const TextStyle(fontSize: 13)),
+            Flexible(
+              child: Text(
+                title ?? '칭호를 골라 보세요',
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontSize: 13),
+              ),
+            ),
           ],
         ),
       ),

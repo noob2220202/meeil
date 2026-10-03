@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/theme.dart';
 import '../../core/api_client.dart';
+import '../../core/sound.dart';
 import '../../ui/widgets.dart';
 import '../rewards/rewards_api.dart';
 import '../rewards/rewards_controller.dart';
@@ -15,6 +16,7 @@ Future<void> checkInWithCelebration(BuildContext context, WidgetRef ref) async {
   try {
     final s = await ref.read(rewardsActionsProvider).checkIn();
     if (!context.mounted || !s.justChecked) return;
+    playSfxIn(context, Sfx.stamp);
     final bonus = s.earned > s.dailyPoints;
     await showRewardDialog(
       context,
@@ -45,6 +47,7 @@ Future<void> watchAdWithFeedback(BuildContext context, WidgetRef ref) async {
   if (!context.mounted) return;
   switch (outcome) {
     case AdRewardOutcome.granted:
+      playSfxIn(context, Sfx.points);
       await showRewardDialog(
         context,
         key: const ValueKey('ad-dialog'),
@@ -84,6 +87,7 @@ Future<void> showAchievementCelebration(BuildContext context, List<Achievement> 
       if (a.stationeryName != null) '편지지 「${a.stationeryName}」',
     ],
   ];
+  playSfxIn(context, Sfx.points);
   return showDialog<void>(
     context: context,
     builder: (context) => _CelebrationDialog(

@@ -7,6 +7,7 @@ import '../../core/korean.dart';
 import '../../data/regions.dart';
 import '../../ui/widgets.dart';
 import '../goats/goat_avatar.dart';
+import '../../core/sound.dart';
 import '../goats/goat_sheet.dart';
 import '../goats/goat_texts.dart';
 import '../goats/goats_api.dart';
@@ -100,13 +101,16 @@ class _MapTabState extends ConsumerState<MapTab> {
             controller: _map,
             clock: widget.clock,
             onRegionTap: (code) => setState(() => _selectedRegion = code),
-            onGoatTap: (goat) => showGoatSheet(
-              context,
-              ref: goat,
-              schedule: schedule,
-              data: geo.data,
-              clock: widget.clock,
-            ),
+            onGoatTap: (goat) {
+              playSfx(ref, Sfx.bleat);
+              showGoatSheet(
+                context,
+                ref: goat,
+                schedule: schedule,
+                data: geo.data,
+                clock: widget.clock,
+              );
+            },
           ),
         ),
         Positioned(

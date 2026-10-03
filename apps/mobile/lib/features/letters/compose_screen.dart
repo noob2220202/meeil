@@ -281,14 +281,15 @@ class _RecipientCard extends ConsumerWidget {
           : Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
                   children: [
                     _ModeChip(
                       label: '지정해서 보내기',
                       selected: draft.mode == LetterMode.direct,
                       onTap: () => c.setMode(LetterMode.direct),
                     ),
-                    const SizedBox(width: 8),
                     _ModeChip(
                       label: '랜덤으로 보내기',
                       selected: draft.mode == LetterMode.random,
@@ -302,7 +303,7 @@ class _RecipientCard extends ConsumerWidget {
                     onTap: onPick,
                     borderRadius: BorderRadius.circular(12),
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 6),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
                       child: Row(
                         children: [
                           const Icon(Icons.person_search_rounded, color: Palette.textBrown),
@@ -363,6 +364,8 @@ class _ModeChip extends StatelessWidget {
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 150),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        constraints: const BoxConstraints(minHeight: 48),
+        alignment: Alignment.center,
         decoration: BoxDecoration(
           color: selected ? Palette.yellow : Colors.white,
           borderRadius: BorderRadius.circular(14),

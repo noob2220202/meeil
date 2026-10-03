@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../app/theme.dart';
 import '../../core/api_client.dart';
+import '../../core/sound.dart';
 import '../../ui/widgets.dart';
 import '../auth/session.dart';
 import 'safety_api.dart';
@@ -62,6 +63,17 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 onChanged: me == null || _saving ? null : (v) => _set(notifyEnabled: v),
                 title: const Text('알림 받기'),
                 subtitle: const Text('편지 도착, 우리 동네에 온 염소, 공지를 알려 줘요.'),
+              ),
+              const Divider(height: 1),
+              SwitchListTile(
+                key: const ValueKey('switch-sound'),
+                value: ref.watch(soundEnabledProvider),
+                onChanged: (v) {
+                  ref.read(soundEnabledProvider.notifier).set(v);
+                  if (v) playSfx(ref, Sfx.bleatShort);
+                },
+                title: const Text('효과음'),
+                subtitle: const Text('염소 울음, 편지 여는 소리 같은 작은 소리. 무음 모드에서는 울리지 않아요.'),
               ),
             ],
           ),

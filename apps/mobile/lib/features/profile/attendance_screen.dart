@@ -193,7 +193,7 @@ class _Calendar extends StatelessWidget {
                     w,
                     style: TextStyle(
                       fontSize: 12.5,
-                      color: i == 0 ? const Color(0xFFE0607E) : Palette.textBrown,
+                      color: i == 0 ? const Color(0xFFC2185B) : Palette.textBrown,
                     ),
                   ),
                 ),
