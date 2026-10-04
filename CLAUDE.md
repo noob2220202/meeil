@@ -70,3 +70,4 @@ docs/         DECISIONS.md, 개인정보처리방침/약관 초안, 스토어 �
 - 운영 배포: `docker compose --profile full --profile prod up -d --build` (`apps/server/.env.production`, 절차 `docs/OPERATIONS.md`)
 - 백업·복구: `deploy/backup.sh`(매일 cron) · `deploy/restore.sh [키]` · 리허설 `deploy/rehearse-restore.sh` (로컬은 `LOCAL=1`)
 - 비공개 테스트 준비 점검표: `docs/CLOSED_TEST.md`
+- 내 폰에 직접 설치(소셜 키 없이): `docs/SELF_INSTALL.md`
