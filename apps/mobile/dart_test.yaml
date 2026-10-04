@@ -5,3 +5,6 @@ tags:
   store-assets:
     # 앱 아이콘·스플래시·스토어 그래픽 생성. 먼저 스크린샷을 만든 뒤 `flutter test --tags store-assets`.
     skip: false
+  promo:
+    # 홍보 영상용 염소 프레임 렌더링(tools/promo). `flutter test --tags promo`
+    skip: false
