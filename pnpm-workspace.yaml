@@ -1,0 +1,14 @@
+packages:
+  - apps/server
+  - apps/admin
+  - tools/*
+onlyBuiltDependencies:
+  - '@prisma/engines'
+  - esbuild
+  - prisma
+ignoredBuiltDependencies:
+  - better-sqlite3
+  - msgpackr-extract
+overrides:
+  mysql2: '>=3.23.1'
+  deepmerge-ts: '>=8.0.0'

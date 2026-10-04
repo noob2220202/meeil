@@ -1,0 +1,71 @@
+# 로컬 개발·VPS 배포 공용. 개발 시에는 `docker compose up -d postgres`만 띄우고 서버는 pnpm dev로 실행한다.
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-meeil}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-meeil}
+      POSTGRES_DB: ${POSTGRES_DB:-meeil}
+    ports:
+      - '127.0.0.1:5432:5432'
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-meeil}']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/server/Dockerfile
+    restart: unless-stopped
+    profiles: ['full']
+    # PID 1을 tini로: 종료 신호 전달, 기동 때 마이그레이션 프로세스 같은 좀비 회수
+    init: true
+    # 운영 시크릿(JWT_SECRET, ADMIN_SECRET_KEY, R2_*, FCM_* …)은 커밋하지 않는 파일에 둔다(docs/OPERATIONS.md)
+    env_file:
+      - path: ./apps/server/.env.production
+        required: false
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      HOST: 0.0.0.0
+      DATABASE_URL: postgresql://${POSTGRES_USER:-meeil}:${POSTGRES_PASSWORD:-meeil}@postgres:5432/${POSTGRES_DB:-meeil}
+      CORS_ORIGINS: ${CORS_ORIGINS:-}
+      TRUST_PROXY_HOPS: 1
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - '127.0.0.1:3000:3000'
+    healthcheck:
+      test: ['CMD-SHELL', 'wget -qO- http://127.0.0.1:3000/health || exit 1']
+      interval: 15s
+      timeout: 3s
+      retries: 5
+
+  # 운영 리버스 프록시: TLS 자동 발급, 관리자 SPA 서빙(deploy/Caddyfile)
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    profiles: ['prod']
+    environment:
+      API_DOMAIN: ${API_DOMAIN:-localhost}
+    ports:
+      - '80:80'
+      - '443:443'
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./apps/admin/dist:/srv/admin:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - api
+
+volumes:
+  pgdata:
+  caddy_data:
+  caddy_config:

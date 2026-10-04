@@ -1,0 +1,9 @@
+pnpm-lock.yaml
+apps/mobile/
+**/generated/
+**/dist/
+*.geojson
+apps/server/prisma/data/
+tools/regions/out/
+SPEC.md
+CLAUDE.md

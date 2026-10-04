@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240">
+  <!-- 편지 봉투 + 하트 씰 -->
+  <g stroke="#7A5C48" stroke-width="6" stroke-linejoin="round" stroke-linecap="round">
+    <rect x="34" y="66" width="172" height="118" rx="16" fill="#FFF8EC"/>
+    <path d="M40 76 L120 136 L200 76" fill="#FFE9C9"/>
+    <path d="M40 176 L100 124 M200 176 L140 124" fill="none"/>
+  </g>
+  <path d="M120 150 C104 138 100 124 110 118 C116 114 120 120 120 120 C120 120 124 114 130 118 C140 124 136 138 120 150 Z" fill="#FF8FAB" stroke="#7A5C48" stroke-width="5" stroke-linejoin="round"/>
+  <!-- 반짝이 -->
+  <g fill="#FFE08A" stroke="#7A5C48" stroke-width="3.5" stroke-linejoin="round">
+    <path d="M196 40 L201 52 L213 57 L201 62 L196 74 L191 62 L179 57 L191 52 Z"/>
+    <path d="M44 196 L47 204 L55 207 L47 210 L44 218 L41 210 L33 207 L41 204 Z"/>
+  </g>
+</svg>

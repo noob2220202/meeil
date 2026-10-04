@@ -1,0 +1,39 @@
+# 운영 리버스 프록시(docker compose --profile full --profile prod). API_DOMAIN=api.<도메인>
+# 전역 trusted_proxies는 두지 않는다: Caddy는 들어온 X-Forwarded-For를 믿지 않고 실제 접속 IP로 덮어쓴다.
+# 서버는 그 오른쪽 1단만 믿는다(TRUST_PROXY_HOPS=1).
+
+{$API_DOMAIN} {
+	encode zstd gzip
+
+	# 관리자 SPA의 API 호출: /api/* → 접두사를 떼고 서버로
+	handle_path /api/* {
+		reverse_proxy api:3000
+	}
+
+	handle /admin* {
+		root * /srv/admin
+		uri strip_prefix /admin
+		try_files {path} /index.html
+		file_server
+		header {
+			X-Frame-Options DENY
+			X-Content-Type-Options nosniff
+			Referrer-Policy no-referrer
+			Cache-Control "no-store"
+			Content-Security-Policy "default-src 'self'; img-src 'self' data: https:; style-src 'self' 'unsafe-inline'; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'"
+		}
+	}
+
+	handle {
+		reverse_proxy api:3000
+	}
+
+	log {
+		output stdout
+		# 접속 로그에 토큰이 남지 않게
+		format filter {
+			request>headers>Authorization delete
+			request>headers>Cookie delete
+		}
+	}
+}

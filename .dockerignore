@@ -1,0 +1,7 @@
+**/node_modules
+**/dist
+**/.env
+apps/mobile
+apps/server/src/generated
+tools/regions/.cache
+.git

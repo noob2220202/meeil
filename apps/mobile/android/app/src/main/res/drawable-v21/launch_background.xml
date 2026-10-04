@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 스플래시: 크림 바탕 가운데 우체부 염소 얼굴 -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:drawable="@color/splash_background" />
+    <item android:width="144dp" android:height="144dp" android:gravity="center">
+        <bitmap android:src="@drawable/splash_goat" android:gravity="fill" />
+    </item>
+</layer-list>

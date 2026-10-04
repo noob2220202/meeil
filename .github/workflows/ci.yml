@@ -1,0 +1,71 @@
+name: CI
+
+on:
+  push:
+    branches: ['**']
+    tags: ['m*']
+  pull_request:
+
+jobs:
+  node:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: meeil
+          POSTGRES_PASSWORD: meeil
+          POSTGRES_DB: meeil
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U meeil" --health-interval 5s --health-timeout 3s --health-retries 10
+    env:
+      DATABASE_URL: postgresql://meeil:meeil@localhost:5432/meeil
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm format:check
+      # 운영 의존성에 알려진 high 이상 취약점이 있으면 실패(docs/SECURITY.md)
+      - run: pnpm audit --prod --audit-level high
+      - run: pnpm --filter @meeil/server db:deploy
+      - run: pnpm lint
+      - run: pnpm typecheck
+      # 서버 통합 테스트(실제 PostgreSQL), 지역 도구·관리자 웹 단위 테스트.
+      # M2부터 염소 스케줄 30일 시뮬레이터 테스트가 여기에 포함된다.
+      - run: pnpm test
+      # 염소 스케줄 시뮬레이터(30일): 제약 위반 시 실패 — 깨지면 다음 단계로 가지 않는다
+      - run: pnpm --filter @meeil/tools-schedule-sim sim --days 30 --start 2026-10-01
+      - run: pnpm --filter @meeil/admin build
+      # 부하 스모크(docs/LOADTEST.md): 가상 사용자 100명 20초, p95 300ms·오류율 0.1% 기준
+      - run: pnpm --filter @meeil/server db:seed
+      - run: pnpm --filter @meeil/server build
+      - name: load smoke
+        env:
+          AUTH_DEV_LOGIN: 'true'
+          JWT_SECRET: ci-only-secret-0123456789abcdef0123456789
+          PORT: '3100'
+        run: |
+          (cd apps/server && node dist/server.js > /tmp/server.log 2>&1 &)
+          for i in $(seq 1 30); do curl -fs localhost:3100/health && break; sleep 1; done
+          pnpm --filter @meeil/tools-loadtest load --url http://localhost:3100 --users 100 --seconds 20
+
+  mobile:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/mobile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: 3.47.6
+          cache: true
+      - run: flutter pub get
+      - run: flutter analyze --fatal-infos
+      - run: flutter test --exclude-tags "screenshot || store-assets || promo"
