@@ -34,6 +34,7 @@ import { rewardRoutes } from './routes/rewards.js';
 import { AchievementService } from './rewards/achievements.js';
 import { AdRewardService, GoogleAdKeys, type AdKeySource } from './rewards/ads.js';
 import { AttendanceService } from './rewards/attendance.js';
+import { registerSecurityHeaders } from './lib/security-headers.js';
 
 declare module 'fastify' {
   interface FastifyInstance {
@@ -41,6 +42,8 @@ declare module 'fastify' {
     letters: LetterService;
     eat: EatService;
     account: AccountService;
+    /** 등록된 모든 라우트(보안 점검 테스트가 인증 누락을 찾는 데 쓴다) */
+    routeList: { method: string; url: string }[];
   }
 }
 
@@ -105,11 +108,32 @@ export async function buildApp({
 }: AppOptions): Promise<FastifyInstance> {
   const app = Fastify({
     logger: logger ? { level: env.NODE_ENV === 'production' ? 'info' : 'debug' } : false,
-    trustProxy: true,
+    // 요청당 로그 두 줄(incoming·completed) 대신 아래 onResponse에서 한 줄만 남긴다(부하 테스트: 로그 쓰기가 CPU의 7%)
+    disableRequestLogging: true,
+    // true(가장 왼쪽 값을 믿음)는 X-Forwarded-For 위조로 요청 제한을 피할 수 있다
+    trustProxy: (_addr: string, hop: number) => hop < env.TRUST_PROXY_HOPS,
     bodyLimit: 64 * 1024,
   });
 
   app.decorate('db', db);
+  const routeList: { method: string; url: string }[] = [];
+  app.decorate('routeList', routeList);
+  app.addHook('onRoute', (r) => {
+    for (const m of [r.method].flat()) if (m !== 'HEAD') routeList.push({ method: m, url: r.url });
+  });
+  app.addHook('onResponse', async (req, reply) => {
+    if (req.url === '/health') return;
+    req.log.info(
+      {
+        method: req.method,
+        url: req.routeOptions.url ?? req.url,
+        status: reply.statusCode,
+        ms: Math.round(reply.elapsedTime),
+      },
+      'req',
+    );
+  });
+  registerSecurityHeaders(app, { hsts: env.NODE_ENV === 'production' });
   await app.register(cors, { origin: env.CORS_ORIGINS.length > 0 ? env.CORS_ORIGINS : false });
   await app.register(rateLimit, {
     global: rateLimitEnabled,
@@ -164,7 +188,11 @@ export async function buildApp({
   app.decorate('account', account);
   await app.register(meRoutes, { now, achievements, account });
   await app.register(webRoutes, { legalDir: env.LEGAL_DIR, rateLimit: rateLimitEnabled });
-  await app.register(goatRoutes, { schedule, now });
+  await app.register(goatRoutes, {
+    schedule,
+    now,
+    cacheMs: env.NODE_ENV === 'test' ? 0 : 30_000,
+  });
   const letters = new LetterService(db, storage, pusher, now, achievements);
   app.decorate('letters', letters);
   await app.register(letterRoutes, { letters });

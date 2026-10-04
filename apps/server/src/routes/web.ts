@@ -18,6 +18,20 @@ const DeletionBody = z.object({
   message: z.string().trim().max(500).optional(),
 });
 
+/** 계정 삭제 요청 폼. CSP(script-src 'self') 때문에 인라인이 아니라 파일로 준다. */
+const DELETE_PAGE_JS = `document.getElementById('f').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const r = document.getElementById('r');
+  const body = Object.fromEntries(new FormData(e.target));
+  try {
+    const res = await fetch('/account/delete-request', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+    const j = await res.json();
+    r.textContent = res.ok ? '요청을 받았어요. 7일 안에 처리할게요.' : (j.error && j.error.message) || '보내지 못했어요.';
+    if (res.ok) e.target.reset();
+  } catch { r.textContent = '보내지 못했어요. 잠시 뒤 다시 해 주세요.'; }
+});
+`;
+
 /**
  * 공개 웹 페이지: 개인정보처리방침·이용약관(스토어 등록 URL), 계정 삭제 안내·요청(SPEC 8, 14).
  * 앱을 지웠거나 쓸 수 없는 사람도 브라우저에서 삭제를 요청할 수 있다.
@@ -59,21 +73,16 @@ export const webRoutes: FastifyPluginAsync<{ legalDir: string; rateLimit: boolea
 <h2>잠시 남는 것</h2>
 <ul><li>신고된 편지·글은 확인을 위해 탈퇴 후 30일 보관한 뒤 지워요.</li></ul>
 <p class="muted"><a href="/legal/privacy">개인정보처리방침</a> · <a href="/legal/terms">이용약관</a></p>
-<script>
-document.getElementById('f').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const r = document.getElementById('r');
-  const body = Object.fromEntries(new FormData(e.target));
-  try {
-    const res = await fetch('/account/delete-request', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
-    const j = await res.json();
-    r.textContent = res.ok ? '요청을 받았어요. 7일 안에 처리할게요.' : (j.error && j.error.message) || '보내지 못했어요.';
-    if (res.ok) e.target.reset();
-  } catch { r.textContent = '보내지 못했어요. 잠시 뒤 다시 해 주세요.'; }
-});
-</script>`,
+<script src="/account/delete.js"></script>`,
       ),
     ),
+  );
+
+  app.get('/account/delete.js', async (_req, reply) =>
+    reply
+      .type('text/javascript; charset=utf-8')
+      .header('cache-control', 'public, max-age=3600')
+      .send(DELETE_PAGE_JS),
   );
 
   app.post(

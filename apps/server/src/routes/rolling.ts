@@ -38,18 +38,7 @@ export const rollingRoutes: FastifyPluginAsync<{ rolling: RollingService }> = as
   );
 
   /** 롤링 탭 한 번에: 전국·도·시 이번 장 요약 */
-  app.get('/rolling/current/all', async (req) => {
-    const out: Record<string, unknown> = {};
-    for (const level of ['NATION', 'PROVINCE', 'CITY'] as const) {
-      try {
-        const v = await rolling.current(req.userId, level);
-        out[level] = { ...v, entries: undefined, entryCount: v.entries.length };
-      } catch (e) {
-        out[level] = { error: (e as { code?: string }).code ?? 'ERROR' };
-      }
-    }
-    return out;
-  });
+  app.get('/rolling/current/all', async (req) => rolling.currentAll(req.userId));
 
   app.get('/rolling/album', async (req) => rolling.album(req.userId));
 

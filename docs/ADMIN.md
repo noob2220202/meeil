@@ -20,25 +20,7 @@ docker compose exec -e ADMIN_PASSWORD='...' api node dist/admin/cli.js boss ADMI
 ## 배포 (Caddy)
 
 관리자 SPA는 `/admin/`, API 호출은 `/api/*`(접두사를 떼고 서버로)로 보낸다. 앱용 API는 그대로 루트.
-
-```caddyfile
-api.<도메인> {
-    handle_path /api/* {
-        reverse_proxy api:3000
-    }
-    handle /admin* {
-        root * /srv/admin          # apps/admin/dist 를 복사
-        uri strip_prefix /admin
-        try_files {path} /index.html
-        file_server
-        header X-Frame-Options DENY
-        header Cache-Control "no-store"
-    }
-    handle {
-        reverse_proxy api:3000
-    }
-}
-```
+설정 파일은 `deploy/Caddyfile`(CSP·`X-Frame-Options`·`no-store` 포함), 띄우는 법은 `docs/OPERATIONS.md` 1장.
 
 빌드: `pnpm --filter @meeil/admin build` → `apps/admin/dist`.
 

@@ -21,7 +21,16 @@ const EnvSchema = z
     PORT: z.coerce.number().int().positive().default(3000),
     HOST: z.string().default('0.0.0.0'),
     DATABASE_URL: z.string().url(),
+    /** 서버 워커 프로세스 수(코어 수까지). 1이면 클러스터 없이 한 프로세스 */
+    WEB_CONCURRENCY: z.coerce.number().int().min(1).max(16).default(1),
+    /** DB 연결 풀 크기. 워커당이다. 워커 수 × 이 값이 PostgreSQL max_connections(기본 100)보다 작아야 한다 */
+    DATABASE_POOL_MAX: z.coerce.number().int().min(1).max(80).default(20),
     CORS_ORIGINS: csv,
+    /**
+     * 앞단 프록시 수. 클라이언트 IP(요청 제한 키)는 X-Forwarded-For의 오른쪽에서 이만큼만 믿는다.
+     * Caddy 한 단이면 1. 0이면 헤더를 무시한다(프록시 없이 직접 노출할 때).
+     */
+    TRUST_PROXY_HOPS: z.coerce.number().int().min(0).max(5).default(1),
     /** 자체 access JWT 서명 키(HS256). 32자 이상 */
     JWT_SECRET: z.string().min(32),
     /** 카카오 앱 ID(숫자). 토큰이 우리 앱에서 발급됐는지 확인한다 */

@@ -64,3 +64,9 @@ docs/         DECISIONS.md, 개인정보처리방침/약관 초안, 스토어 �
 - 실기기 프레임 확인: `cd apps/mobile && flutter drive --profile --driver=test_driver/perf_driver.dart --target=integration_test/map_perf_test.dart [--dart-define=GOATS=60]` → `build/map_frames.timeline_summary.json` (기준은 `docs/PERFORMANCE.md`)
 - 릴리스 AAB 빌드: `cd apps/mobile && flutter build appbundle --release --dart-define=...` (업로드 키 `android/key.properties` 필요, 없으면 멈춤. 절차·dart-define 목록은 `docs/RELEASE.md`)
 - 앱 아이콘·스플래시·스토어 그래픽 재생성: `cd apps/mobile && flutter test --tags screenshot && flutter test --tags store-assets` → `android/app/src/main/res`, `docs/store/`
+- 보안 점검 테스트: `pnpm --filter @meeil/server test -- test/security.test.ts` (점검표 `docs/SECURITY.md`)
+- 부하 테스트: 서버를 `AUTH_DEV_LOGIN=true`로 띄운 뒤 `pnpm --filter @meeil/tools-loadtest load --url http://localhost:3000 --users 500 --seconds 60` (기준·결과 `docs/LOADTEST.md`, 운영 서버 금지)
+- DB 정합성 점검: `docker compose exec -T postgres psql -U meeil meeil < deploy/sql/integrity.sql` (모든 violations 0)
+- 운영 배포: `docker compose --profile full --profile prod up -d --build` (`apps/server/.env.production`, 절차 `docs/OPERATIONS.md`)
+- 백업·복구: `deploy/backup.sh`(매일 cron) · `deploy/restore.sh [키]` · 리허설 `deploy/rehearse-restore.sh` (로컬은 `LOCAL=1`)
+- 비공개 테스트 준비 점검표: `docs/CLOSED_TEST.md`

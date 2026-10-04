@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 릴리스: HTTPS만, 시스템 CA만 신뢰(사용자 설치 CA 불신). 디버그 빌드는 src/debug 매니페스트가 평문을 허용한다. -->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system"/>
+        </trust-anchors>
+    </base-config>
+</network-security-config>

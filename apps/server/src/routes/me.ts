@@ -27,11 +27,14 @@ const Body = {
   }),
   nickname: z.object({ nickname: z.string().max(40) }),
   nickQuery: z.object({ nick: z.string().max(40) }),
-  region: z.object({
-    regionCode: z.string().regex(/^\d{5}$/, '지역 코드가 올바르지 않아요.'),
-    /** 기기가 감지한 가짜 위치(Android isMocked) */
-    mocked: z.boolean().default(false),
-  }),
+  region: z
+    .object({
+      regionCode: z.string().regex(/^\d{5}$/, '지역 코드가 올바르지 않아요.'),
+      /** 기기가 감지한 가짜 위치(Android isMocked) */
+      mocked: z.boolean().default(false),
+    })
+    // 정밀 좌표(lat/lng 등)를 실수로라도 받지 않는다(CLAUDE.md 위치 규칙)
+    .strict(),
 };
 
 /** 약관·생년월일·닉네임이 모두 채워지는 순간 가입 보너스와 기본 편지지를 한 번만 지급한다. */

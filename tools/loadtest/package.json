@@ -1,0 +1,19 @@
+{
+  "name": "@meeil/tools-loadtest",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "load": "tsx src/cli.ts",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@types/node": "26.6.4",
+    "eslint": "9.39.5",
+    "tsx": "4.23.15",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.71.0",
+    "vitest": "4.1.11"
+  }
+}

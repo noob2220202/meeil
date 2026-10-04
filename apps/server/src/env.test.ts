@@ -30,4 +30,18 @@ describe('loadEnv', () => {
       /AUTH_DEV_LOGIN/,
     );
   });
+
+  it('production에는 관리자 TOTP 암호화 키가 필요하다', () => {
+    expect(() => loadEnv({ ...base, NODE_ENV: 'production' })).toThrow(/ADMIN_SECRET_KEY/);
+    const env = loadEnv({ ...base, NODE_ENV: 'production', ADMIN_SECRET_KEY: 'k'.repeat(32) });
+    expect(env.NODE_ENV).toBe('production');
+  });
+
+  it('프록시는 기본 1단만 믿고, 풀·워커 수에 기본값이 있다', () => {
+    const env = loadEnv(base);
+    expect(env.TRUST_PROXY_HOPS).toBe(1);
+    expect(env.DATABASE_POOL_MAX).toBe(20);
+    expect(env.WEB_CONCURRENCY).toBe(1);
+    expect(() => loadEnv({ ...base, TRUST_PROXY_HOPS: '9' })).toThrow(/환경변수 오류/);
+  });
 });

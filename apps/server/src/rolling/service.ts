@@ -3,6 +3,7 @@ import { DELETED_NAME } from '../account/delete.js';
 import type { Db } from '../db.js';
 import { kstToday } from '../domain/age.js';
 import { AppError } from '../errors.js';
+import { TtlCache } from '../lib/ttl-cache.js';
 import type { Prisma, RollingLevel } from '../generated/prisma/client.js';
 import { REGION_FRESH_MS, type PlacedSticker } from '../letters/rules.js';
 import { METRICS, type AchievementService } from '../rewards/achievements.js';
@@ -37,6 +38,17 @@ const entryInclude = {
 } satisfies Prisma.RollingEntryInclude;
 
 type EntryRow = Prisma.RollingEntryGetPayload<{ include: typeof entryInclude }>;
+
+/** 한 요청 안에서 여러 장을 볼 때 공유하는 보는 사람 정보 */
+interface Viewer {
+  region: { code: string; provinceCode: string } | null;
+  lastRegion: { code: string; provinceCode: string } | null;
+  blocked: Set<string>;
+}
+
+const LEVELS = ['NATION', 'PROVINCE', 'CITY'] as const;
+/** 염소·지역 이름은 시드로만 바뀐다 */
+const STATIC_TTL_MS = 10 * 60 * 1000;
 type PaperRow = Prisma.RollingPaperGetPayload<object>;
 
 export type JoinBlock =
@@ -48,6 +60,22 @@ export class RollingService {
     private readonly now: () => Date,
     private readonly achievements?: AchievementService,
   ) {}
+
+  private readonly names = new TtlCache<string | null>(STATIC_TTL_MS);
+  private readonly goats = new TtlCache<{
+    id: string;
+    name: string;
+    hatColor: string;
+    bagColor: string;
+  } | null>(STATIC_TTL_MS);
+
+  private async viewer(userId: string): Promise<Viewer> {
+    const [{ region, lastRegion }, blocks] = await Promise.all([
+      this.myRegion(userId),
+      this.db.block.findMany({ where: { blockerId: userId }, select: { blockedId: true } }),
+    ]);
+    return { region, lastRegion, blocked: new Set(blocks.map((b) => b.blockedId)) };
+  }
 
   /** 지금 보고된(30분 이내) 내 시. 없으면 null */
   private async myRegion(userId: string) {
@@ -62,10 +90,17 @@ export class RollingService {
     return { user: u, region: fresh ? u.lastRegion : null, lastRegion: u.lastRegion };
   }
 
+  /**
+   * 이번 장. 대부분은 이미 있으므로 먼저 읽고, 없을 때만 만든다.
+   * (upsert는 모두가 같은 전국 장 행에 쓰기 잠금을 걸어 부하 때 줄을 세운다 — docs/LOADTEST.md)
+   */
   private async paperFor(level: RollingLevel, scopeCode: string): Promise<PaperRow> {
     const { start, end } = periodOf(level, this.now());
+    const where = { level_scopeCode_periodStart: { level, scopeCode, periodStart: start } };
+    const found = await this.db.rollingPaper.findUnique({ where });
+    if (found) return found;
     return this.db.rollingPaper.upsert({
-      where: { level_scopeCode_periodStart: { level, scopeCode, periodStart: start } },
+      where,
       create: { level, scopeCode, periodStart: start, periodEnd: end },
       update: {},
     });
@@ -95,15 +130,31 @@ export class RollingService {
    * 레벨별 이번 장. 진행 중인 장은 그 지역 사람만 볼 수 있다(SPEC 6).
    * 전국 장은 위치를 몰라도 볼 수 있다(참여는 위치가 필요).
    */
-  async current(userId: string, level: RollingLevel) {
-    const { region, lastRegion } = await this.myRegion(userId);
-    const area = region ?? lastRegion;
+  async current(userId: string, level: RollingLevel, viewer?: Viewer) {
+    const v = viewer ?? (await this.viewer(userId));
+    const area = v.region ?? v.lastRegion;
     if (level !== 'NATION' && !area) {
       throw new AppError(409, 'REGION_UNKNOWN', '지금 있는 시를 확인한 뒤에 볼 수 있어요.');
     }
     const scopeCode = area ? scopeOf(level, area.code, area.provinceCode) : 'KR';
     const paper = await this.paperFor(level, scopeCode);
-    return this.paperView(userId, paper);
+    return this.paperView(userId, paper, v);
+  }
+
+  /** 롤링 탭 요약: 세 레벨을 한 번에(보는 사람 정보는 한 번만 읽는다) */
+  async currentAll(userId: string) {
+    const v = await this.viewer(userId);
+    const views = await Promise.all(
+      LEVELS.map(async (level) => {
+        try {
+          const view = await this.current(userId, level, v);
+          return [level, { ...view, entries: undefined, entryCount: view.entries.length }] as const;
+        } catch (e) {
+          return [level, { error: (e as { code?: string }).code ?? 'ERROR' }] as const;
+        }
+      }),
+    );
+    return Object.fromEntries(views);
   }
 
   async get(userId: string, paperId: string) {
@@ -117,33 +168,32 @@ export class RollingService {
       });
       if (!mine)
         throw new AppError(403, 'PAPER_CLOSED', '마감된 두루마리는 참여한 사람만 볼 수 있어요.');
-    } else if (paper.level !== 'NATION') {
-      const { region, lastRegion } = await this.myRegion(userId);
-      const area = region ?? lastRegion;
+    }
+    const v = await this.viewer(userId);
+    if (!closed && paper.level !== 'NATION') {
+      const area = v.region ?? v.lastRegion;
       if (!area || scopeOf(paper.level, area.code, area.provinceCode) !== paper.scopeCode) {
         throw new AppError(403, 'NOT_IN_SCOPE', '이 두루마리는 그 지역에 있을 때만 볼 수 있어요.');
       }
     }
-    return this.paperView(userId, paper);
+    return this.paperView(userId, paper, v);
   }
 
-  private async paperView(userId: string, paper: PaperRow) {
+  private async paperView(userId: string, paper: PaperRow, v: Viewer) {
     const now = this.now();
-    const entries = await this.db.rollingEntry.findMany({
-      where: { paperId: paper.id },
-      include: entryInclude,
-      orderBy: { createdAt: 'asc' },
-    });
-    const join = await this.joinStatus(userId, paper, entries);
+    const [entries, dto] = await Promise.all([
+      this.db.rollingEntry.findMany({
+        where: { paperId: paper.id },
+        include: entryInclude,
+        orderBy: { createdAt: 'asc' },
+      }),
+      this.paperDto(paper),
+    ]);
+    const join = await this.joinStatus(userId, paper, entries, v.region);
     // 내가 차단한 사람의 글은 보이지 않는다(SPEC 9.1)
-    const blocked = new Set(
-      (
-        await this.db.block.findMany({ where: { blockerId: userId }, select: { blockedId: true } })
-      ).map((b) => b.blockedId),
-    );
-    const visible = entries.filter((e) => !blocked.has(e.authorId));
+    const visible = entries.filter((e) => !v.blocked.has(e.authorId));
     return {
-      paper: await this.paperDto(paper),
+      paper: dto,
       entries: visible.map((e) => entryDto(e, userId)),
       joined: entries.some((e) => e.authorId === userId),
       canJoin: join.block === null,
@@ -154,7 +204,12 @@ export class RollingService {
     };
   }
 
-  private async joinStatus(userId: string, paper: PaperRow, entries: EntryRow[]) {
+  private async joinStatus(
+    userId: string,
+    paper: PaperRow,
+    entries: EntryRow[],
+    region: Viewer['region'],
+  ) {
     const now = this.now();
     const result = (
       block: JoinBlock | null,
@@ -167,7 +222,6 @@ export class RollingService {
     });
     if (paper.periodEnd <= now || paper.periodStart > now) return result('CLOSED');
     if (entries.some((e) => e.authorId === userId)) return result('ALREADY_JOINED', true);
-    const { region } = await this.myRegion(userId);
     if (!region) return result('REGION_UNKNOWN');
     if (scopeOf(paper.level, region.code, region.provinceCode) !== paper.scopeCode) {
       return result('NOT_IN_SCOPE');
@@ -176,33 +230,45 @@ export class RollingService {
     return result(g.here ? null : 'NO_GOAT_HERE', g.here, g.nextArriveAt);
   }
 
-  private async paperDto(p: PaperRow) {
-    let scopeName = '전국';
-    if (p.level === 'PROVINCE') {
-      scopeName =
-        (await this.db.province.findUnique({ where: { code: p.scopeCode } }))?.shortName ??
-        p.scopeCode;
-    } else if (p.level === 'CITY') {
-      scopeName =
-        (await this.db.region.findUnique({ where: { code: p.scopeCode } }))?.fullName ??
-        p.scopeCode;
-    }
-    const goat =
+  private scopeName(p: PaperRow): Promise<string> {
+    if (p.level === 'NATION') return Promise.resolve('전국');
+    return this.names
+      .get(`${p.level}:${p.scopeCode}`, async () =>
+        p.level === 'PROVINCE'
+          ? ((await this.db.province.findUnique({ where: { code: p.scopeCode } }))?.shortName ??
+            null)
+          : ((await this.db.region.findUnique({ where: { code: p.scopeCode } }))?.fullName ?? null),
+      )
+      .then((n) => n ?? p.scopeCode);
+  }
+
+  private goatOf(p: PaperRow) {
+    const kind =
       p.level === 'NATION'
-        ? await this.db.goat.findFirst({ where: { kind: 'ROLLING_NATION' } })
+        ? ('ROLLING_NATION' as const)
         : p.level === 'PROVINCE'
-          ? await this.db.goat.findFirst({
-              where: { kind: 'ROLLING_PROVINCE', scopeCode: p.scopeCode },
-            })
-          : await this.db.goat.findFirst({
-              where: { kind: 'ROLLING_CITY', scopeCode: p.scopeCode },
-            });
+          ? ('ROLLING_PROVINCE' as const)
+          : ('ROLLING_CITY' as const);
+    return this.goats.get(`${kind}:${p.level === 'NATION' ? '' : p.scopeCode}`, () =>
+      this.db.goat.findFirst({
+        where: { kind, ...(p.level === 'NATION' ? {} : { scopeCode: p.scopeCode }) },
+        select: { id: true, name: true, hatColor: true, bagColor: true },
+      }),
+    );
+  }
+
+  private async paperDto(p: PaperRow) {
+    const [scopeName, goat, topic] = await Promise.all([
+      this.scopeName(p),
+      this.goatOf(p),
+      p.topic ?? this.topicFor(p),
+    ]);
     return {
       id: p.id,
       level: p.level,
       scopeCode: p.scopeCode,
       scopeName,
-      topic: p.topic ?? (await this.topicFor(p)),
+      topic,
       periodStart: p.periodStart.toISOString(),
       periodEnd: p.periodEnd.toISOString(),
       goat: goat
@@ -238,7 +304,8 @@ export class RollingService {
       where: { paperId },
       include: entryInclude,
     });
-    const { block } = await this.joinStatus(userId, paper, entries);
+    const { region } = await this.myRegion(userId);
+    const { block } = await this.joinStatus(userId, paper, entries, region);
     if (block) throw new AppError(409, block, joinBlockMessage(block, paper.level));
     try {
       const e = await this.db.rollingEntry.create({
